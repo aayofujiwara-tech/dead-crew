@@ -1,15 +1,13 @@
 import type { DieValue, DieHighlight } from '../types/game';
 import { dieFacePositions } from '../utils/dice';
 
-export type DieAnimState = 'none' | 'fade-out' | 'move-up' | 'move-down' | 'hidden';
-
 interface DiceDisplayProps {
   dice: DieValue[];
   diceCount: number;
   isRolling: boolean;
   highlights?: DieHighlight[];
-  dieAnims?: DieAnimState[];
   inverted?: boolean;
+  diceIdPrefix?: string;
 }
 
 const HIGHLIGHT_STYLES: Record<DieHighlight, { bg: string; border: string; animation: string }> = {
@@ -40,29 +38,13 @@ const HIGHLIGHT_STYLES: Record<DieHighlight, { bg: string; border: string; anima
   },
 };
 
-function getAnimStyle(anim: DieAnimState): React.CSSProperties {
-  switch (anim) {
-    case 'fade-out':
-      return { opacity: 0, transition: 'opacity 300ms ease-out' };
-    case 'move-up':
-      return { transform: 'translateY(-40vh)', opacity: 0, transition: 'transform 400ms ease-in, opacity 400ms ease-in' };
-    case 'move-down':
-      return { transform: 'translateY(40vh)', opacity: 0, transition: 'transform 400ms ease-in, opacity 400ms ease-in' };
-    case 'hidden':
-      return { opacity: 0 };
-    default:
-      return {};
-  }
-}
-
-function DieFace({ value, isRolling, highlight, anim }: { value: DieValue; isRolling: boolean; highlight: DieHighlight; anim: DieAnimState }) {
+function DieFace({ value, isRolling, highlight, diceId }: { value: DieValue; isRolling: boolean; highlight: DieHighlight; diceId?: string }) {
   const dots = dieFacePositions[value];
   const style = HIGHLIGHT_STYLES[highlight];
   const animClass = isRolling ? 'animate-dice-roll' : style.animation;
-  const animStyle = getAnimStyle(anim);
 
   return (
-    <div className="relative" style={animStyle}>
+    <div className="relative" data-dice-id={diceId}>
       <div
         className={`
           w-12 h-12 sm:w-14 sm:h-14 rounded-lg shadow-lg
@@ -96,7 +78,7 @@ function EmptyDie() {
   );
 }
 
-export default function DiceDisplay({ dice, diceCount, isRolling, highlights, dieAnims, inverted }: DiceDisplayProps) {
+export default function DiceDisplay({ dice, diceCount, isRolling, highlights, inverted, diceIdPrefix }: DiceDisplayProps) {
   return (
     <div className={`flex flex-wrap gap-2 justify-center ${inverted ? 'rotate-180' : ''}`}>
       {dice.length > 0
@@ -106,7 +88,7 @@ export default function DiceDisplay({ dice, diceCount, isRolling, highlights, di
               value={value}
               isRolling={isRolling}
               highlight={highlights?.[i] ?? 'normal'}
-              anim={dieAnims?.[i] ?? 'none'}
+              diceId={diceIdPrefix ? `${diceIdPrefix}-${i}` : undefined}
             />
           ))
         : Array.from({ length: diceCount }, (_, i) => (

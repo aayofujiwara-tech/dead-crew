@@ -9,9 +9,9 @@ import VictoryScreen from './components/VictoryScreen';
 import DiceEffects, { nextEffectId } from './components/DiceEffects';
 import type { DiceEffect } from './components/DiceEffects';
 import type { DieHighlight, GameMode } from './types/game';
-import type { DieAnimState } from './components/DiceDisplay';
 import { computeDiceHighlights } from './utils/dice';
 import { cpuController } from './controllers/playerControllers';
+import { animateDiceRemove, animateDiceTransfer, resetDiceStyles } from './utils/animateDice';
 
 function App() {
   const [screen, setScreen] = useState<'title' | 'rule' | 'game'>('title');
@@ -19,10 +19,8 @@ function App() {
   const [showEffects, setShowEffects] = useState(false);
   const [removedChanged, setRemovedChanged] = useState(false);
   const [diceEffects, setDiceEffects] = useState<DiceEffect[]>([]);
-  const [p1DieAnims, setP1DieAnims] = useState<DieAnimState[]>([]);
-  const [p2DieAnims, setP2DieAnims] = useState<DieAnimState[]>([]);
   const prevRemovedRef = useRef(0);
-  const resolvedTurnRef = useRef(-1);
+  const animatingRef = useRef(false);
 
   const {
     state,
@@ -45,84 +43,67 @@ function App() {
   }, [state.removedPool]);
 
   // When phase becomes 'resolving_normal':
-  // 1. Show highlights (colored dice)
-  // 2. Fade out 1s via CSS transition (300ms)
-  // 3. Move 6s via CSS transition (400ms)
-  // 4. Resolve state after all animations complete
+  // Run DOM animations via async/await, THEN dispatch state update
   useEffect(() => {
     if (state.phase !== 'resolving_normal') return;
-    if (resolvedTurnRef.current === state.turn) return;
-    resolvedTurnRef.current = state.turn;
+    if (animatingRef.current) return;
+    animatingRef.current = true;
 
     const p1Roll = state.player1.currentRoll;
     const p2Roll = state.player2.currentRoll;
-    const hasOnes = p1Roll.some(d => d === 1) || p2Roll.some(d => d === 1);
-    const hasSixes = p1Roll.some(d => d === 6) || p2Roll.some(d => d === 6);
 
     // Show colored highlights on 1s and 6s
     setShowEffects(true);
 
-    // No special dice — resolve immediately
-    if (!hasOnes && !hasSixes) {
+    const run = async () => {
+      // Step 1: Animate 1s (remove/ghost) — all in parallel per player
+      const ghostPromises: Promise<void>[] = [];
+      p1Roll.forEach((d, i) => {
+        if (d === 1) ghostPromises.push(animateDiceRemove(`p1-dice-${i}`));
+      });
+      p2Roll.forEach((d, i) => {
+        if (d === 1) ghostPromises.push(animateDiceRemove(`p2-dice-${i}`));
+      });
+      if (ghostPromises.length > 0) {
+        await Promise.all(ghostPromises);
+      }
+
+      // Step 2: Animate 6s (transfer to opponent) — all in parallel per player
+      const transferPromises: Promise<void>[] = [];
+      p1Roll.forEach((d, i) => {
+        if (d === 6) transferPromises.push(animateDiceTransfer(`p1-dice-${i}`, '[data-player="p2"]'));
+      });
+      p2Roll.forEach((d, i) => {
+        if (d === 6) transferPromises.push(animateDiceTransfer(`p2-dice-${i}`, '[data-player="p1"]'));
+      });
+      if (transferPromises.length > 0) {
+        await Promise.all(transferPromises);
+      }
+
+      // Step 3: All animations done — update state
+      animatingRef.current = false;
       resolveNormal();
-      return;
-    }
+    };
 
-    const timers: ReturnType<typeof setTimeout>[] = [];
+    run();
 
-    // Step 1: Fade out 1s (300ms CSS transition)
-    if (hasOnes) {
-      setP1DieAnims(p1Roll.map(d => d === 1 ? 'fade-out' : 'none'));
-      setP2DieAnims(p2Roll.map(d => d === 1 ? 'fade-out' : 'none'));
-    }
+    // Fallback: if animation takes too long, force resolve
+    const fallback = setTimeout(() => {
+      if (animatingRef.current) {
+        animatingRef.current = false;
+        resolveNormal();
+      }
+    }, 1200);
 
-    // Step 2: After 1s finish, move 6s toward opponent (400ms CSS transition)
-    const moveDelay = hasOnes ? 300 : 0;
-    if (hasSixes) {
-      timers.push(setTimeout(() => {
-        setP1DieAnims(p1Roll.map(d => {
-          if (d === 1) return 'hidden';
-          if (d === 6) return 'move-up';
-          return 'none';
-        }));
-        setP2DieAnims(p2Roll.map(d => {
-          if (d === 1) return 'hidden';
-          if (d === 6) return 'move-down';
-          return 'none';
-        }));
-      }, moveDelay));
-    }
-
-    // Step 3: All animations done — hide affected dice, resolve state
-    const totalDelay = moveDelay + (hasSixes ? 400 : 0);
-    timers.push(setTimeout(() => {
-      // Keep 1s and 6s hidden until next roll
-      setP1DieAnims(p1Roll.map(d => (d === 1 || d === 6) ? 'hidden' : 'none'));
-      setP2DieAnims(p2Roll.map(d => (d === 1 || d === 6) ? 'hidden' : 'none'));
-      resolveNormal();
-    }, totalDelay));
-
-    return () => timers.forEach(t => clearTimeout(t));
+    return () => clearTimeout(fallback);
   }, [state.phase, state.turn, state.player1.currentRoll, state.player2.currentRoll, resolveNormal]);
 
-  // Safety fallback: if stuck in resolving_normal for >1200ms, force resolve
-  useEffect(() => {
-    if (state.phase !== 'resolving_normal') return;
-    const fallback = setTimeout(() => {
-      setP1DieAnims([]);
-      setP2DieAnims([]);
-      resolveNormal();
-    }, 1200);
-    return () => clearTimeout(fallback);
-  }, [state.phase, resolveNormal]);
-
-  // Screen shake on roll — clear animations from previous turn
+  // Screen shake on roll — reset any leftover DOM animation styles
   const handleRoll = useCallback(() => {
     if (state.phase === 'waiting') {
       setShaking(true);
       setShowEffects(false);
-      setP1DieAnims([]);
-      setP2DieAnims([]);
+      resetDiceStyles();
       setTimeout(() => setShaking(false), 150);
       rollAndProcess();
     }
@@ -189,7 +170,7 @@ function App() {
 
   const getPlayerName = (id: number) => id === 1 ? state.player1.name : state.player2.name;
 
-  // Compute per-die highlights (colors only, visibility handled by dieAnims)
+  // Compute per-die highlights (colors only, animation handled by DOM)
   const p1Highlights: DieHighlight[] | undefined = showEffects
     ? computeDiceHighlights(state.player1.currentRoll)
     : undefined;
@@ -230,10 +211,10 @@ function App() {
           removedPool={state.removedPool}
           isRolling={state.animationPhase === 'rolling'}
           highlights={p2Highlights}
-          dieAnims={p2DieAnims}
           removedChanged={removedChanged}
           inverted={!isCpuMode}
           isCpu={isCpuMode}
+          diceIdPrefix="p2-dice"
         />
       </div>
 
@@ -300,8 +281,8 @@ function App() {
           removedPool={state.removedPool}
           isRolling={state.animationPhase === 'rolling'}
           highlights={p1Highlights}
-          dieAnims={p1DieAnims}
           removedChanged={removedChanged}
+          diceIdPrefix="p1-dice"
         />
       </div>
 
