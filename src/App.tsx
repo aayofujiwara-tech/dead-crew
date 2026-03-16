@@ -1,13 +1,14 @@
 import { useCallback, useState, useEffect } from 'react';
 import { useGameState } from './hooks/useGameState';
 import TitleScreen from './components/TitleScreen';
+import RuleScreen from './components/RuleScreen';
 import PlayerArea from './components/PlayerArea';
 import GameLog from './components/GameLog';
 import ChoiceDialog from './components/ChoiceDialog';
 import VictoryScreen from './components/VictoryScreen';
 
 function App() {
-  const [screen, setScreen] = useState<'title' | 'game'>('title');
+  const [screen, setScreen] = useState<'title' | 'rule' | 'game'>('title');
 
   const {
     state,
@@ -43,7 +44,11 @@ function App() {
   const getPlayerName = (id: number) => id === 1 ? state.player1.name : state.player2.name;
 
   if (screen === 'title') {
-    return <TitleScreen onStart={() => setScreen('game')} />;
+    return <TitleScreen onStart={() => setScreen('game')} onShowRules={() => setScreen('rule')} />;
+  }
+
+  if (screen === 'rule') {
+    return <RuleScreen onBack={() => setScreen('title')} />;
   }
 
   return (

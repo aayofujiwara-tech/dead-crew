@@ -1,12 +1,9 @@
-import { useState } from 'react';
-
 interface TitleScreenProps {
   onStart: () => void;
+  onShowRules: () => void;
 }
 
-export default function TitleScreen({ onStart }: TitleScreenProps) {
-  const [rulesOpen, setRulesOpen] = useState(false);
-
+export default function TitleScreen({ onStart, onShowRules }: TitleScreenProps) {
   return (
     <div className="min-h-[100dvh] bg-navy-900 text-cream flex flex-col items-center justify-center relative overflow-hidden">
       {/* Background wave animation */}
@@ -54,65 +51,24 @@ export default function TitleScreen({ onStart }: TitleScreenProps) {
             transition-all duration-200
             shadow-[0_0_30px_rgba(45,212,191,0.4)]
             animate-glow-pulse
-            mb-8
+            mb-4
           "
         >
           出航する！
         </button>
 
-        {/* Rules section */}
-        <div className="w-full">
-          <button
-            onClick={() => setRulesOpen(!rulesOpen)}
-            className="
-              w-full flex items-center justify-between
-              px-4 py-3 rounded-lg
-              bg-navy-700/60 border border-teal-600/30
-              hover:border-teal-400/50 transition-all
-              text-left
-            "
-          >
-            <span className="font-pirate text-lg text-cream">遊び方</span>
-            <span className={`text-teal-400 transition-transform duration-300 ${rulesOpen ? 'rotate-180' : ''}`}>
-              ▼
-            </span>
-          </button>
-
-          {rulesOpen && (
-            <div className="mt-2 px-4 py-4 rounded-lg bg-navy-800/80 border border-teal-600/20 space-y-3 text-sm max-h-[40vh] overflow-y-auto scrollbar-thin">
-              <div className="space-y-2">
-                <RuleItem emoji="🎲" text="両プレイヤーが同時にダイスを振る" />
-                <RuleItem emoji="1️⃣" text="1が出たらそのダイスを除外（成仏）" />
-                <RuleItem emoji="6️⃣" text="6が出たらそのダイスを相手に渡す" />
-                <RuleItem emoji="✨" text="ぞろ目で特殊効果が発動！" />
-                <div className="pl-8 space-y-1 text-teal-400/70 text-xs">
-                  <p>2×3個 → ダイスを全て入れ替え（選択可）</p>
-                  <p>3×3個 → 除外済み3個を相手に追加</p>
-                  <p>4×3個 → 除外済み4個を相手に追加</p>
-                  <p>5×3個 → 自分2個除外 or 1個相手に押し付け</p>
-                </div>
-                <RuleItem emoji="🏆" text="手持ちダイスが0になったらラウンド勝利" />
-                <RuleItem emoji="👑" text="2ラウンド先取でマッチ勝利！" />
-                <div className="pt-2 border-t border-teal-600/20">
-                  <p className="text-ghost-orange font-bold text-xs mb-1">即勝利条件</p>
-                  <div className="space-y-1 text-teal-400/70 text-xs">
-                    <p>5個ぞろ目 / 4個ぞろ目 / フルハウス</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+        {/* Rules button */}
+        <button
+          onClick={onShowRules}
+          className="
+            px-6 py-2 rounded-xl font-pirate text-lg
+            bg-navy-700 text-teal-400 border border-teal-600/50
+            hover:bg-teal-600/20 hover:border-teal-400 transition-all duration-75
+          "
+        >
+          ルールを見る
+        </button>
       </div>
-    </div>
-  );
-}
-
-function RuleItem({ emoji, text }: { emoji: string; text: string }) {
-  return (
-    <div className="flex items-start gap-2">
-      <span className="text-base flex-shrink-0">{emoji}</span>
-      <span className="text-teal-400/90">{text}</span>
     </div>
   );
 }
