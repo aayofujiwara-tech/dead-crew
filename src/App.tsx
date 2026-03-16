@@ -16,6 +16,7 @@ import {
   animateDiceTransferOut,
   resetDiceStyles,
   waitMs,
+  waitForHighlightPaint,
 } from './utils/animateDice';
 
 function App() {
@@ -80,6 +81,11 @@ function App() {
 
     const run = async () => {
       try {
+        // Wait for React to flush setShowEffects(true) and browser to paint
+        // the highlight colors (orange for 6, gray for 1) BEFORE moving dice.
+        // Without this, highlights and animation start in the same frame.
+        await waitForHighlightPaint();
+
         // Step 1: Animate 1s (ghost/remove) — all in parallel
         const ghostPromises: Promise<void>[] = [];
         p1Roll.forEach((d, i) => {
