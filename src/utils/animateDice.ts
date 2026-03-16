@@ -17,6 +17,9 @@ export async function animateDiceRemove(diceId: string): Promise<void> {
   el.style.transform = 'scale(0) translateY(-30px)';
   el.style.opacity = '0';
   await waitMs(300);
+  // Lock hidden — prevent flash when React re-renders
+  el.style.transition = 'none';
+  el.style.visibility = 'hidden';
 }
 
 /**
@@ -36,6 +39,9 @@ export async function animateDiceTransferOut(
   el.style.transform = `translateY(${dy}px)`;
   el.style.opacity = '0';
   await waitMs(400);
+  // Lock hidden — prevent flash when React re-renders
+  el.style.transition = 'none';
+  el.style.visibility = 'hidden';
 }
 
 /** Reset all inline styles set by DOM animations */
@@ -45,5 +51,6 @@ export function resetDiceStyles(): void {
     htmlEl.style.transition = '';
     htmlEl.style.transform = '';
     htmlEl.style.opacity = '';
+    htmlEl.style.visibility = '';
   });
 }
