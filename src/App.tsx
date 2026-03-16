@@ -98,6 +98,20 @@ function App() {
     }
   }, [state.phase, rollAndProcess]);
 
+  // Spacebar shortcut to roll dice
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        if (state.phase === 'waiting') {
+          handleRoll();
+        }
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [state.phase, handleRoll]);
+
   // Spawn effects for special choices (swap, curse)
   const handleChoice = useCallback((player: Parameters<typeof makeChoice>[0], choice: Parameters<typeof makeChoice>[1]) => {
     const currentPending = state.pendingChoices[state.currentChoiceIndex];
