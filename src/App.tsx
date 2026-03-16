@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect } from 'react';
+import { useCallback, useState, useEffect, useRef } from 'react';
 import { useGameState } from './hooks/useGameState';
 import TitleScreen from './components/TitleScreen';
 import RuleScreen from './components/RuleScreen';
@@ -6,9 +6,18 @@ import PlayerArea from './components/PlayerArea';
 import GameLog from './components/GameLog';
 import ChoiceDialog from './components/ChoiceDialog';
 import VictoryScreen from './components/VictoryScreen';
+import DiceEffects, { nextEffectId } from './components/DiceEffects';
+import type { DiceEffect } from './components/DiceEffects';
+import { countOnes, countSixes } from './utils/dice';
 
 function App() {
   const [screen, setScreen] = useState<'title' | 'rule' | 'game'>('title');
+  const [shaking, setShaking] = useState(false);
+  const [showEffects, setShowEffects] = useState(false);
+  const [removedChanged, setRemovedChanged] = useState(false);
+  const [diceEffects, setDiceEffects] = useState<DiceEffect[]>([]);
+  const [animating, setAnimating] = useState(false);
+  const prevRemovedRef = useRef(0);
 
   const {
     state,
@@ -20,18 +29,81 @@ function App() {
     restartMatch,
   } = useGameState();
 
-  // Auto-resolve normal effects immediately when no choices are pending
+  // Track removed pool changes for bounce animation
   useEffect(() => {
-    if (state.phase === 'resolving_normal') {
-      resolveNormal();
+    if (state.removedPool !== prevRemovedRef.current) {
+      prevRemovedRef.current = state.removedPool;
+      setRemovedChanged(true);
+      const t = setTimeout(() => setRemovedChanged(false), 300);
+      return () => clearTimeout(t);
     }
-  }, [state.phase, resolveNormal]);
+  }, [state.removedPool]);
 
+  // Show effect highlights after results are shown, then auto-resolve
+  useEffect(() => {
+    if (state.phase === 'resolving_normal' && !animating) {
+      // Trigger effect animations
+      setShowEffects(true);
+      setAnimating(true);
+
+      // Spawn overlay effects based on roll
+      const effects: DiceEffect[] = [];
+      const p1Ones = countOnes(state.player1.currentRoll);
+      const p2Ones = countOnes(state.player2.currentRoll);
+      const p1Sixes = countSixes(state.player1.currentRoll);
+      const p2Sixes = countSixes(state.player2.currentRoll);
+
+      if (p1Ones + p2Ones > 0) {
+        effects.push({ id: nextEffectId(), type: 'ghost', count: p1Ones + p2Ones });
+      }
+      if (p1Sixes > 0) {
+        effects.push({ id: nextEffectId(), type: 'push_up', count: p1Sixes });
+      }
+      if (p2Sixes > 0) {
+        effects.push({ id: nextEffectId(), type: 'push_down', count: p2Sixes });
+      }
+      setDiceEffects(effects);
+
+      // After brief animation window, resolve
+      const t = setTimeout(() => {
+        resolveNormal();
+        setAnimating(false);
+        setShowEffects(false);
+        setDiceEffects([]);
+      }, 280);
+      return () => clearTimeout(t);
+    }
+  }, [state.phase, animating, resolveNormal, state.player1.currentRoll, state.player2.currentRoll]);
+
+  // Screen shake on roll
   const handleRoll = useCallback(() => {
     if (state.phase === 'waiting') {
+      setShaking(true);
+      setTimeout(() => setShaking(false), 150);
       rollAndProcess();
     }
   }, [state.phase, rollAndProcess]);
+
+  // Spawn effects for special choices (swap, curse)
+  const handleChoice = useCallback((player: Parameters<typeof makeChoice>[0], choice: Parameters<typeof makeChoice>[1]) => {
+    // Figure out what effect is being applied
+    const currentPending = state.pendingChoices[state.currentChoiceIndex];
+    if (currentPending) {
+      const effects: DiceEffect[] = [];
+      if (currentPending.effect.type === 'swap_all' && choice === 'swap') {
+        effects.push({ id: nextEffectId(), type: 'swap', count: 1 });
+      }
+      if ((currentPending.effect.type === 'add_removed_3' || currentPending.effect.type === 'add_removed_4')) {
+        const count = currentPending.effect.type === 'add_removed_3' ? 3 : 4;
+        effects.push({ id: nextEffectId(), type: 'curse', count: Math.min(count, state.removedPool) });
+      }
+      if (effects.length > 0) {
+        setDiceEffects(prev => [...prev, ...effects]);
+        setTimeout(() => setDiceEffects([]), 400);
+      }
+    }
+    makeChoice(player, choice);
+  }, [makeChoice, state.pendingChoices, state.currentChoiceIndex, state.removedPool]);
 
   const currentChoice = state.pendingChoices[state.currentChoiceIndex];
   const showingChoice = (state.phase === 'resolving_choice_p1' || state.phase === 'resolving_choice_p2') && currentChoice;
@@ -51,8 +123,11 @@ function App() {
     return <RuleScreen onBack={() => setScreen('title')} />;
   }
 
+  const isInstantWin = (state.phase === 'round_end' || state.phase === 'match_end') &&
+    !state.isDraw && state.animationPhase === 'victory';
+
   return (
-    <div className="min-h-[100dvh] bg-navy-900 text-cream flex flex-col overflow-hidden relative">
+    <div className={`min-h-[100dvh] bg-navy-900 text-cream flex flex-col overflow-hidden relative ${shaking ? 'animate-screen-shake' : ''}`}>
       {/* Background decorations */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-10 left-5 text-4xl opacity-10 animate-float">👻</div>
@@ -67,6 +142,8 @@ function App() {
           player={state.player2}
           removedPool={state.removedPool}
           isRolling={state.animationPhase === 'rolling'}
+          showEffects={showEffects}
+          removedChanged={removedChanged}
           inverted
         />
       </div>
@@ -127,15 +204,20 @@ function App() {
           player={state.player1}
           removedPool={state.removedPool}
           isRolling={state.animationPhase === 'rolling'}
+          showEffects={showEffects}
+          removedChanged={removedChanged}
         />
       </div>
+
+      {/* Dice movement effect overlay */}
+      <DiceEffects effects={diceEffects} />
 
       {/* Choice dialog */}
       {showingChoice && (
         <ChoiceDialog
           choice={currentChoice}
           playerName={getPlayerName(currentChoice.player)}
-          onChoose={makeChoice}
+          onChoose={handleChoice}
         />
       )}
 
@@ -147,6 +229,7 @@ function App() {
           isDraw={state.isDraw}
           winnerName={state.winner ? getPlayerName(state.winner) : ''}
           onNext={nextRound}
+          isInstantWin={isInstantWin}
         />
       )}
 
@@ -159,6 +242,7 @@ function App() {
           winnerName={state.matchWinner ? getPlayerName(state.matchWinner) : ''}
           onNext={restartMatch}
           onGoToTitle={handleGoToTitle}
+          isInstantWin={isInstantWin}
         />
       )}
     </div>

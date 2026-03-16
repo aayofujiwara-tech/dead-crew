@@ -30,8 +30,17 @@ export default {
       },
       animation: {
         'dice-roll': 'diceRoll 0.25s ease-out',
-        'dice-remove': 'diceRemove 0.2s ease-out forwards',
-        'dice-move': 'diceMove 0.2s ease-in-out',
+        'dice-settle': 'diceSettle 0.15s ease-out',
+        'dice-ghost': 'diceGhost 0.3s ease-out forwards',
+        'dice-push-up': 'dicePushUp 0.28s ease-in-out forwards',
+        'dice-push-down': 'dicePushDown 0.28s ease-in-out forwards',
+        'dice-swap': 'diceSwap 0.28s ease-in-out',
+        'dice-curse': 'diceCurse 0.3s ease-out',
+        'ghost-pop': 'ghostPop 0.4s ease-out forwards',
+        'counter-bounce': 'counterBounce 0.25s ease-out',
+        'screen-shake': 'screenShake 0.15s ease-out',
+        'confetti': 'confetti 0.6s ease-out forwards',
+        'instant-win-text': 'instantWinText 0.4s ease-out',
         'float': 'float 3s ease-in-out infinite',
         'glow-pulse': 'glowPulse 2s ease-in-out infinite',
         'victory-burst': 'victoryBurst 0.35s ease-out',
@@ -44,14 +53,59 @@ export default {
           '50%': { transform: 'rotate(180deg) scale(1.2)' },
           '100%': { transform: 'rotate(360deg) scale(1)', opacity: '1' },
         },
-        diceRemove: {
-          '0%': { transform: 'scale(1)', opacity: '1' },
-          '100%': { transform: 'scale(0) translateY(-30px)', opacity: '0' },
+        diceSettle: {
+          '0%': { transform: 'scale(1.2)' },
+          '60%': { transform: 'scale(0.95)' },
+          '100%': { transform: 'scale(1)' },
         },
-        diceMove: {
-          '0%': { transform: 'translateY(0)' },
-          '50%': { transform: 'translateY(-40px) scale(1.1)' },
-          '100%': { transform: 'translateY(0)' },
+        diceGhost: {
+          '0%': { transform: 'translateY(0) scale(1)', opacity: '1' },
+          '100%': { transform: 'translateY(-40px) scale(0.3)', opacity: '0' },
+        },
+        dicePushUp: {
+          '0%': { transform: 'translateY(0) scale(1)' },
+          '40%': { transform: 'translateY(-20px) scale(1.1)' },
+          '100%': { transform: 'translateY(-60px) scale(0.8)', opacity: '0.3' },
+        },
+        dicePushDown: {
+          '0%': { transform: 'translateY(0) scale(1)' },
+          '40%': { transform: 'translateY(20px) scale(1.1)' },
+          '100%': { transform: 'translateY(60px) scale(0.8)', opacity: '0.3' },
+        },
+        diceSwap: {
+          '0%': { transform: 'translateX(0)' },
+          '50%': { transform: 'translateX(30px) scale(0.9)', opacity: '0.6' },
+          '100%': { transform: 'translateX(0) scale(1)', opacity: '1' },
+        },
+        diceCurse: {
+          '0%': { transform: 'scale(0.5)', opacity: '0' },
+          '60%': { transform: 'scale(1.15)', opacity: '1' },
+          '100%': { transform: 'scale(1)' },
+        },
+        ghostPop: {
+          '0%': { transform: 'scale(0) translateY(0)', opacity: '1' },
+          '50%': { transform: 'scale(1.5) translateY(-15px)', opacity: '0.8' },
+          '100%': { transform: 'scale(0.5) translateY(-35px)', opacity: '0' },
+        },
+        counterBounce: {
+          '0%': { transform: 'scale(1)' },
+          '40%': { transform: 'scale(1.4)' },
+          '100%': { transform: 'scale(1)' },
+        },
+        screenShake: {
+          '0%, 100%': { transform: 'translateX(0)' },
+          '25%': { transform: 'translateX(-3px) translateY(1px)' },
+          '50%': { transform: 'translateX(3px) translateY(-1px)' },
+          '75%': { transform: 'translateX(-2px) translateY(1px)' },
+        },
+        confetti: {
+          '0%': { transform: 'translateY(0) rotate(0deg) scale(1)', opacity: '1' },
+          '100%': { transform: 'translateY(80px) rotate(720deg) scale(0)', opacity: '0' },
+        },
+        instantWinText: {
+          '0%': { transform: 'scale(0) rotate(-10deg)', opacity: '0' },
+          '60%': { transform: 'scale(1.3) rotate(3deg)', opacity: '1' },
+          '100%': { transform: 'scale(1) rotate(0deg)' },
         },
         float: {
           '0%, 100%': { transform: 'translateY(0)' },

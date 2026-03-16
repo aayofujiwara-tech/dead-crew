@@ -7,13 +7,49 @@ interface VictoryScreenProps {
   winnerName: string;
   onNext: () => void;
   onGoToTitle?: () => void;
+  isInstantWin?: boolean;
 }
 
-export default function VictoryScreen({ type, winner: _winner, isDraw, winnerName, onNext, onGoToTitle }: VictoryScreenProps) {
+const CONFETTI_PIECES = ['🎉', '✨', '⭐', '🌟', '💫', '🔥', '👑', '💀'];
+
+function Confetti() {
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden">
+      {Array.from({ length: 16 }, (_, i) => {
+        const left = Math.random() * 100;
+        const delay = Math.random() * 300;
+        const piece = CONFETTI_PIECES[i % CONFETTI_PIECES.length];
+        return (
+          <div
+            key={i}
+            className="absolute animate-confetti text-xl"
+            style={{
+              left: `${left}%`,
+              top: `${20 + Math.random() * 30}%`,
+              animationDelay: `${delay}ms`,
+              animationDuration: `${400 + Math.random() * 200}ms`,
+            }}
+          >
+            {piece}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+export default function VictoryScreen({ type, winner: _winner, isDraw, winnerName, onNext, onGoToTitle, isInstantWin }: VictoryScreenProps) {
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+      {(isInstantWin || type === 'match') && <Confetti />}
+
       <div className="animate-victory-burst text-center">
         <div className="bg-navy-700 border-2 border-ghost-orange rounded-2xl p-8 max-w-sm w-full shadow-[0_0_50px_rgba(249,115,22,0.3)]">
+          {isInstantWin && (
+            <div className="animate-instant-win-text font-pirate text-2xl text-ghost-orange mb-3 drop-shadow-[0_0_15px_rgba(249,115,22,0.6)]">
+              即勝利！
+            </div>
+          )}
           {isDraw ? (
             <>
               <div className="text-5xl mb-4">💀💀</div>
