@@ -17,6 +17,8 @@ function App() {
   const [showEffects, setShowEffects] = useState(false);
   const [removedChanged, setRemovedChanged] = useState(false);
   const [diceEffects, setDiceEffects] = useState<DiceEffect[]>([]);
+  // Persistent highlights: kept until the next roll to prevent hidden dice from reappearing
+  const [persistHighlights, setPersistHighlights] = useState(false);
   const prevRemovedRef = useRef(0);
   const resolvedTurnRef = useRef(-1);
 
@@ -65,15 +67,16 @@ function App() {
       effects.push({ id: nextEffectId(), type: 'push_down', count: p2Sixes });
     }
 
-    // Show highlights on dice
+    // Show highlights on dice — persist them so hidden dice stay hidden
     setShowEffects(true);
+    setPersistHighlights(true);
     if (effects.length > 0) {
       setDiceEffects(effects);
     }
 
     // After effect animation, resolve game logic
+    // Keep highlights persistent (cleared on next roll), only clear overlay effects
     const t = setTimeout(() => {
-      setShowEffects(false);
       setDiceEffects([]);
       resolveNormal();
     }, 300);
@@ -85,17 +88,18 @@ function App() {
   useEffect(() => {
     if (state.phase !== 'resolving_normal') return;
     const fallback = setTimeout(() => {
-      setShowEffects(false);
       setDiceEffects([]);
       resolveNormal();
     }, 500);
     return () => clearTimeout(fallback);
   }, [state.phase, resolveNormal]);
 
-  // Screen shake on roll
+  // Screen shake on roll — clear persistent highlights from previous turn
   const handleRoll = useCallback(() => {
     if (state.phase === 'waiting') {
       setShaking(true);
+      setShowEffects(false);
+      setPersistHighlights(false);
       setTimeout(() => setShaking(false), 150);
       rollAndProcess();
     }
@@ -145,11 +149,12 @@ function App() {
 
   const getPlayerName = (id: number) => id === 1 ? state.player1.name : state.player2.name;
 
-  // Compute per-die highlights
-  const p1Highlights: DieHighlight[] | undefined = showEffects
+  // Compute per-die highlights (persist after effects so hidden dice stay hidden)
+  const hasHighlights = showEffects || persistHighlights;
+  const p1Highlights: DieHighlight[] | undefined = hasHighlights
     ? computeDiceHighlights(state.player1.currentRoll)
     : undefined;
-  const p2Highlights: DieHighlight[] | undefined = showEffects
+  const p2Highlights: DieHighlight[] | undefined = hasHighlights
     ? computeDiceHighlights(state.player2.currentRoll)
     : undefined;
 

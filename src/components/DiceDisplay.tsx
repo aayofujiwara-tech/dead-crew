@@ -9,31 +9,36 @@ interface DiceDisplayProps {
   inverted?: boolean;
 }
 
-const HIGHLIGHT_STYLES: Record<DieHighlight, { bg: string; border: string; animation: string }> = {
+const HIGHLIGHT_STYLES: Record<DieHighlight, { bg: string; border: string; animation: string; hidden: boolean }> = {
   'normal': {
     bg: 'bg-cream',
     border: 'border-navy-600',
     animation: '',
+    hidden: false,
   },
   'ghost': {
     bg: 'bg-gray-400',
     border: 'border-gray-500',
-    animation: 'animate-dice-ghost',
+    animation: '',
+    hidden: true,
   },
   'push': {
     bg: 'bg-orange-200',
-    border: 'border-ghost-orange shadow-[0_0_10px_rgba(249,115,22,0.5)]',
-    animation: 'animate-dice-push-up',
+    border: 'border-ghost-orange',
+    animation: '',
+    hidden: true,
   },
   'triple': {
     bg: 'bg-teal-200',
     border: 'border-teal-400 shadow-[0_0_12px_rgba(45,212,191,0.6)]',
     animation: 'animate-dice-settle',
+    hidden: false,
   },
   'instant-win': {
     bg: 'bg-yellow-200',
     border: 'border-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.7)]',
     animation: 'animate-dice-gold-pulse',
+    hidden: false,
   },
 };
 
@@ -41,9 +46,11 @@ function DieFace({ value, isRolling, highlight }: { value: DieValue; isRolling: 
   const dots = dieFacePositions[value];
   const style = HIGHLIGHT_STYLES[highlight];
   const animClass = isRolling ? 'animate-dice-roll' : style.animation;
+  // Hide source die immediately when it's being moved/removed (overlay handles the visual)
+  const hiddenClass = !isRolling && style.hidden ? 'opacity-0' : '';
 
   return (
-    <div className="relative">
+    <div className={`relative ${hiddenClass}`}>
       <div
         className={`
           w-12 h-12 sm:w-14 sm:h-14 rounded-lg shadow-lg
@@ -65,18 +72,6 @@ function DieFace({ value, isRolling, highlight }: { value: DieValue; isRolling: 
           ))}
         </svg>
       </div>
-      {/* Ghost emoji popup for removed dice */}
-      {!isRolling && highlight === 'ghost' && (
-        <div className="absolute -top-2 left-1/2 -translate-x-1/2 animate-ghost-pop text-lg pointer-events-none">
-          👻
-        </div>
-      )}
-      {/* Arrow indicator for push dice */}
-      {!isRolling && highlight === 'push' && (
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-ghost-orange text-sm pointer-events-none animate-float">
-          ↑
-        </div>
-      )}
     </div>
   );
 }
