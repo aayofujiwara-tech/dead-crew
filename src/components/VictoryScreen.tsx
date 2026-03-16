@@ -8,7 +8,7 @@ interface VictoryScreenProps {
   onNext: () => void;
 }
 
-export default function VictoryScreen({ type, winner, isDraw, winnerName, onNext }: VictoryScreenProps) {
+export default function VictoryScreen({ type, winner: _winner, isDraw, winnerName, onNext }: VictoryScreenProps) {
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
       <div className="animate-victory-burst text-center">
