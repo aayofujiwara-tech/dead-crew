@@ -1,9 +1,11 @@
 /**
  * Direct DOM animation for dice.
- * Completely bypasses React state to avoid render-timing issues.
+ * Outgoing animations (1s remove, 6s transfer-out) use inline styles
+ * to avoid React state/render timing issues.
+ * Incoming animations use React state + CSS classes (see DiceDisplay).
  */
 
-function wait(ms: number): Promise<void> {
+export function waitMs(ms: number): Promise<void> {
   return new Promise(r => setTimeout(r, ms));
 }
 
@@ -14,40 +16,29 @@ export async function animateDiceRemove(diceId: string): Promise<void> {
   el.style.transition = 'all 300ms ease-out';
   el.style.transform = 'scale(0) translateY(-30px)';
   el.style.opacity = '0';
-  await wait(300);
+  await waitMs(300);
 }
 
-/** Move a die toward the target player area (for 6s — push/transfer) */
-export async function animateDiceTransfer(
+/**
+ * Slide a die out toward center and fade (for 6s — transfer).
+ * direction 'up' = P1's dice slide up toward center
+ * direction 'down' = P2's dice slide down toward center
+ */
+export async function animateDiceTransferOut(
   diceId: string,
-  targetSelector: string,
+  direction: 'up' | 'down',
 ): Promise<void> {
   const el = document.querySelector(`[data-dice-id="${diceId}"]`) as HTMLElement | null;
-  const target = document.querySelector(targetSelector) as HTMLElement | null;
-  if (!el || !target) return;
-
-  const fromRect = el.getBoundingClientRect();
-  const toRect = target.getBoundingClientRect();
-  const dx = toRect.left + toRect.width / 2 - (fromRect.left + fromRect.width / 2);
-  const dy = toRect.top + toRect.height / 2 - (fromRect.top + fromRect.height / 2);
-
-  el.style.transition = 'all 400ms ease-in-out';
-  el.style.transform = `translate(${dx}px, ${dy}px) scale(0.8)`;
-  el.style.opacity = '0.5';
-  await wait(350);
-  el.style.opacity = '0';
-  await wait(50);
-}
-
-/** Hide a die instantly (cleanup after animation) */
-export function hideDice(diceId: string): void {
-  const el = document.querySelector(`[data-dice-id="${diceId}"]`) as HTMLElement | null;
   if (!el) return;
-  el.style.transition = 'none';
+
+  const dy = direction === 'up' ? -60 : 60;
+  el.style.transition = 'all 400ms ease-in';
+  el.style.transform = `translateY(${dy}px)`;
   el.style.opacity = '0';
+  await waitMs(400);
 }
 
-/** Reset all inline styles set by animations */
+/** Reset all inline styles set by DOM animations */
 export function resetDiceStyles(): void {
   document.querySelectorAll('[data-dice-id]').forEach(el => {
     const htmlEl = el as HTMLElement;

@@ -11,7 +11,12 @@ import type { DiceEffect } from './components/DiceEffects';
 import type { DieHighlight, GameMode } from './types/game';
 import { computeDiceHighlights } from './utils/dice';
 import { cpuController } from './controllers/playerControllers';
-import { animateDiceRemove, animateDiceTransfer, resetDiceStyles } from './utils/animateDice';
+import {
+  animateDiceRemove,
+  animateDiceTransferOut,
+  resetDiceStyles,
+  waitMs,
+} from './utils/animateDice';
 
 function App() {
   const [screen, setScreen] = useState<'title' | 'rule' | 'game'>('title');
@@ -19,6 +24,9 @@ function App() {
   const [showEffects, setShowEffects] = useState(false);
   const [removedChanged, setRemovedChanged] = useState(false);
   const [diceEffects, setDiceEffects] = useState<DiceEffect[]>([]);
+  // Incoming dice counts for slide-in animation
+  const [p1Incoming, setP1Incoming] = useState(0);
+  const [p2Incoming, setP2Incoming] = useState(0);
   const prevRemovedRef = useRef(0);
   const animatingRef = useRef(false);
 
@@ -43,7 +51,11 @@ function App() {
   }, [state.removedPool]);
 
   // When phase becomes 'resolving_normal':
-  // Run DOM animations via async/await, THEN dispatch state update
+  // 1. Animate 1s (fade out via DOM)
+  // 2. Animate 6s (slide out via DOM)
+  // 3. Update state (resolveNormal)
+  // 4. Show incoming dice (React state + CSS animation)
+  // 5. Clear incoming dice
   useEffect(() => {
     if (state.phase !== 'resolving_normal') return;
     if (animatingRef.current) return;
@@ -51,38 +63,66 @@ function App() {
 
     const p1Roll = state.player1.currentRoll;
     const p2Roll = state.player2.currentRoll;
+    const p1SixCount = p1Roll.filter(d => d === 6).length;
+    const p2SixCount = p2Roll.filter(d => d === 6).length;
+    const hasOnes = p1Roll.some(d => d === 1) || p2Roll.some(d => d === 1);
+    const hasSixes = p1SixCount > 0 || p2SixCount > 0;
 
     // Show colored highlights on 1s and 6s
     setShowEffects(true);
 
-    const run = async () => {
-      // Step 1: Animate 1s (remove/ghost) — all in parallel per player
-      const ghostPromises: Promise<void>[] = [];
-      p1Roll.forEach((d, i) => {
-        if (d === 1) ghostPromises.push(animateDiceRemove(`p1-dice-${i}`));
-      });
-      p2Roll.forEach((d, i) => {
-        if (d === 1) ghostPromises.push(animateDiceRemove(`p2-dice-${i}`));
-      });
-      if (ghostPromises.length > 0) {
-        await Promise.all(ghostPromises);
-      }
-
-      // Step 2: Animate 6s (transfer to opponent) — all in parallel per player
-      const transferPromises: Promise<void>[] = [];
-      p1Roll.forEach((d, i) => {
-        if (d === 6) transferPromises.push(animateDiceTransfer(`p1-dice-${i}`, '[data-player="p2"]'));
-      });
-      p2Roll.forEach((d, i) => {
-        if (d === 6) transferPromises.push(animateDiceTransfer(`p2-dice-${i}`, '[data-player="p1"]'));
-      });
-      if (transferPromises.length > 0) {
-        await Promise.all(transferPromises);
-      }
-
-      // Step 3: All animations done — update state
+    // No special dice — resolve immediately
+    if (!hasOnes && !hasSixes) {
       animatingRef.current = false;
       resolveNormal();
+      return;
+    }
+
+    const run = async () => {
+      try {
+        // Step 1: Animate 1s (ghost/remove) — all in parallel
+        const ghostPromises: Promise<void>[] = [];
+        p1Roll.forEach((d, i) => {
+          if (d === 1) ghostPromises.push(animateDiceRemove(`p1-dice-${i}`));
+        });
+        p2Roll.forEach((d, i) => {
+          if (d === 1) ghostPromises.push(animateDiceRemove(`p2-dice-${i}`));
+        });
+        if (ghostPromises.length > 0) {
+          await Promise.all(ghostPromises);
+        }
+
+        // Step 2: Animate 6s (slide out toward center) — all in parallel
+        // P1 (bottom) slides UP, P2 (top) slides DOWN
+        const transferPromises: Promise<void>[] = [];
+        p1Roll.forEach((d, i) => {
+          if (d === 6) transferPromises.push(animateDiceTransferOut(`p1-dice-${i}`, 'up'));
+        });
+        p2Roll.forEach((d, i) => {
+          if (d === 6) transferPromises.push(animateDiceTransferOut(`p2-dice-${i}`, 'down'));
+        });
+        if (transferPromises.length > 0) {
+          await Promise.all(transferPromises);
+        }
+
+        // Step 3: Update state (diceCount changes)
+        resolveNormal();
+
+        // Step 4: Show incoming dice with slide-in animation
+        // P1's 6s → incoming to P2's area (slide in from bottom, since P1 is below)
+        // P2's 6s → incoming to P1's area (slide in from top, since P2 is above)
+        if (p1SixCount > 0) setP2Incoming(p1SixCount);
+        if (p2SixCount > 0) setP1Incoming(p2SixCount);
+
+        // Step 5: Wait for incoming animation to complete, then clear
+        if (hasSixes) {
+          await waitMs(350);
+          setP1Incoming(0);
+          setP2Incoming(0);
+        }
+      } finally {
+        animatingRef.current = false;
+      }
     };
 
     run();
@@ -91,6 +131,8 @@ function App() {
     const fallback = setTimeout(() => {
       if (animatingRef.current) {
         animatingRef.current = false;
+        setP1Incoming(0);
+        setP2Incoming(0);
         resolveNormal();
       }
     }, 1200);
@@ -98,11 +140,13 @@ function App() {
     return () => clearTimeout(fallback);
   }, [state.phase, state.turn, state.player1.currentRoll, state.player2.currentRoll, resolveNormal]);
 
-  // Screen shake on roll — reset any leftover DOM animation styles
+  // Screen shake on roll — reset animations from previous turn
   const handleRoll = useCallback(() => {
     if (state.phase === 'waiting') {
       setShaking(true);
       setShowEffects(false);
+      setP1Incoming(0);
+      setP2Incoming(0);
       resetDiceStyles();
       setTimeout(() => setShaking(false), 150);
       rollAndProcess();
@@ -170,7 +214,7 @@ function App() {
 
   const getPlayerName = (id: number) => id === 1 ? state.player1.name : state.player2.name;
 
-  // Compute per-die highlights (colors only, animation handled by DOM)
+  // Compute per-die highlights (colors only, animation handled by DOM/CSS)
   const p1Highlights: DieHighlight[] | undefined = showEffects
     ? computeDiceHighlights(state.player1.currentRoll)
     : undefined;
@@ -204,7 +248,7 @@ function App() {
         <div className="absolute bottom-20 right-5 text-4xl opacity-10 animate-float" style={{ animationDelay: '0.5s' }}>⚓</div>
       </div>
 
-      {/* Player 2 area */}
+      {/* Player 2 area (top) */}
       <div className="flex-1 flex flex-col justify-end border-b border-teal-600/20">
         <PlayerArea
           player={state.player2}
@@ -215,6 +259,8 @@ function App() {
           inverted={!isCpuMode}
           isCpu={isCpuMode}
           diceIdPrefix="p2-dice"
+          incomingCount={p2Incoming}
+          incomingAnimClass={p2Incoming > 0 ? 'animate-die-incoming-from-bottom' : undefined}
         />
       </div>
 
@@ -274,7 +320,7 @@ function App() {
         </div>
       </div>
 
-      {/* Player 1 area */}
+      {/* Player 1 area (bottom) */}
       <div className="flex-1 flex flex-col justify-start border-t border-teal-600/20">
         <PlayerArea
           player={state.player1}
@@ -283,6 +329,8 @@ function App() {
           highlights={p1Highlights}
           removedChanged={removedChanged}
           diceIdPrefix="p1-dice"
+          incomingCount={p1Incoming}
+          incomingAnimClass={p1Incoming > 0 ? 'animate-die-incoming-from-top' : undefined}
         />
       </div>
 

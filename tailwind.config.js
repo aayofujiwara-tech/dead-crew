@@ -36,6 +36,8 @@ export default {
         'dice-ghost-down': 'diceGhostDown 0.28s ease-in forwards',
         'dice-push-up': 'diceTransferUp 0.3s ease-in-out forwards',
         'dice-push-down': 'diceTransferDown 0.3s ease-in-out forwards',
+        'die-incoming-from-top': 'dieIncomingFromTop 300ms ease-out forwards',
+        'die-incoming-from-bottom': 'dieIncomingFromBottom 300ms ease-out forwards',
         'dice-swap': 'diceSwap 0.28s ease-in-out',
         'dice-curse': 'diceCurse 0.3s ease-out',
         'dice-gold-pulse': 'diceGoldPulse 1s ease-in-out infinite',
@@ -88,6 +90,14 @@ export default {
           '80%': { transform: 'translateY(37vh) scale(1.15)', opacity: '1' },
           '92%': { transform: 'translateY(35vh) scale(0.95)', opacity: '0.9' },
           '100%': { transform: 'translateY(35vh) scale(1)', opacity: '0' },
+        },
+        dieIncomingFromTop: {
+          '0%': { transform: 'translateY(-40px)', opacity: '0' },
+          '100%': { transform: 'translateY(0)', opacity: '1' },
+        },
+        dieIncomingFromBottom: {
+          '0%': { transform: 'translateY(40px)', opacity: '0' },
+          '100%': { transform: 'translateY(0)', opacity: '1' },
         },
         diceSwap: {
           '0%': { transform: 'translateX(0)' },

@@ -8,6 +8,10 @@ interface DiceDisplayProps {
   highlights?: DieHighlight[];
   inverted?: boolean;
   diceIdPrefix?: string;
+  /** Number of incoming dice (transferred from opponent via 6s) */
+  incomingCount?: number;
+  /** Animation class for incoming dice */
+  incomingAnimClass?: string;
 }
 
 const HIGHLIGHT_STYLES: Record<DieHighlight, { bg: string; border: string; animation: string }> = {
@@ -38,13 +42,19 @@ const HIGHLIGHT_STYLES: Record<DieHighlight, { bg: string; border: string; anima
   },
 };
 
-function DieFace({ value, isRolling, highlight, diceId }: { value: DieValue; isRolling: boolean; highlight: DieHighlight; diceId?: string }) {
+function DieFace({ value, isRolling, highlight, diceId, extraClass }: {
+  value: DieValue;
+  isRolling: boolean;
+  highlight: DieHighlight;
+  diceId?: string;
+  extraClass?: string;
+}) {
   const dots = dieFacePositions[value];
   const style = HIGHLIGHT_STYLES[highlight];
   const animClass = isRolling ? 'animate-dice-roll' : style.animation;
 
   return (
-    <div className="relative" data-dice-id={diceId}>
+    <div className={`relative ${extraClass ?? ''}`} data-dice-id={diceId}>
       <div
         className={`
           w-12 h-12 sm:w-14 sm:h-14 rounded-lg shadow-lg
@@ -78,7 +88,10 @@ function EmptyDie() {
   );
 }
 
-export default function DiceDisplay({ dice, diceCount, isRolling, highlights, inverted, diceIdPrefix }: DiceDisplayProps) {
+export default function DiceDisplay({
+  dice, diceCount, isRolling, highlights, inverted, diceIdPrefix,
+  incomingCount = 0, incomingAnimClass,
+}: DiceDisplayProps) {
   return (
     <div className={`flex flex-wrap gap-2 justify-center ${inverted ? 'rotate-180' : ''}`}>
       {dice.length > 0
@@ -95,6 +108,18 @@ export default function DiceDisplay({ dice, diceCount, isRolling, highlights, in
             <EmptyDie key={i} />
           ))
       }
+      {/* Incoming dice from opponent (6s transferred) */}
+      {incomingCount > 0 && incomingAnimClass && (
+        Array.from({ length: incomingCount }, (_, i) => (
+          <DieFace
+            key={`incoming-${i}`}
+            value={6}
+            isRolling={false}
+            highlight="push"
+            extraClass={incomingAnimClass}
+          />
+        ))
+      )}
     </div>
   );
 }

@@ -11,9 +11,15 @@ interface PlayerAreaProps {
   inverted?: boolean;
   isCpu?: boolean;
   diceIdPrefix?: string;
+  incomingCount?: number;
+  incomingAnimClass?: string;
 }
 
-export default function PlayerArea({ player, removedPool, isRolling, highlights, removedChanged = false, inverted, isCpu, diceIdPrefix }: PlayerAreaProps) {
+export default function PlayerArea({
+  player, removedPool, isRolling, highlights,
+  removedChanged = false, inverted, isCpu, diceIdPrefix,
+  incomingCount, incomingAnimClass,
+}: PlayerAreaProps) {
   return (
     <div
       className={`flex flex-col items-center gap-3 p-4 ${inverted ? 'flex-col-reverse' : ''}`}
@@ -59,6 +65,8 @@ export default function PlayerArea({ player, removedPool, isRolling, highlights,
           highlights={highlights}
           inverted={inverted}
           diceIdPrefix={diceIdPrefix}
+          incomingCount={incomingCount}
+          incomingAnimClass={incomingAnimClass}
         />
       </div>
     </div>
