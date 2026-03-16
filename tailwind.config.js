@@ -36,6 +36,7 @@ export default {
         'dice-push-down': 'dicePushDown 0.28s ease-in-out forwards',
         'dice-swap': 'diceSwap 0.28s ease-in-out',
         'dice-curse': 'diceCurse 0.3s ease-out',
+        'dice-gold-pulse': 'diceGoldPulse 1s ease-in-out infinite',
         'ghost-pop': 'ghostPop 0.4s ease-out forwards',
         'counter-bounce': 'counterBounce 0.25s ease-out',
         'screen-shake': 'screenShake 0.15s ease-out',
@@ -101,6 +102,10 @@ export default {
         confetti: {
           '0%': { transform: 'translateY(0) rotate(0deg) scale(1)', opacity: '1' },
           '100%': { transform: 'translateY(80px) rotate(720deg) scale(0)', opacity: '0' },
+        },
+        diceGoldPulse: {
+          '0%, 100%': { boxShadow: '0 0 5px rgba(234, 179, 8, 0.5)' },
+          '50%': { boxShadow: '0 0 20px rgba(234, 179, 8, 0.8)' },
         },
         instantWinText: {
           '0%': { transform: 'scale(0) rotate(-10deg)', opacity: '0' },

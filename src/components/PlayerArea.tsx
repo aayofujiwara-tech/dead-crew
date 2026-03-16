@@ -1,4 +1,4 @@
-import type { PlayerState } from '../types/game';
+import type { PlayerState, DieHighlight } from '../types/game';
 import DiceDisplay from './DiceDisplay';
 import MatchScore from './MatchScore';
 
@@ -6,12 +6,12 @@ interface PlayerAreaProps {
   player: PlayerState;
   removedPool: number;
   isRolling: boolean;
-  showEffects?: boolean;
+  highlights?: DieHighlight[];
   removedChanged?: boolean;
   inverted?: boolean;
 }
 
-export default function PlayerArea({ player, removedPool, isRolling, showEffects = false, removedChanged = false, inverted }: PlayerAreaProps) {
+export default function PlayerArea({ player, removedPool, isRolling, highlights, removedChanged = false, inverted }: PlayerAreaProps) {
   return (
     <div className={`flex flex-col items-center gap-3 p-4 ${inverted ? 'flex-col-reverse' : ''}`}>
       <div className="flex items-center gap-3 w-full justify-between">
@@ -30,7 +30,6 @@ export default function PlayerArea({ player, removedPool, isRolling, showEffects
             {removedPool}
           </strong>
           個
-          {/* Ghost icons for removed dice */}
           {removedPool > 0 && (
             <span className="flex ml-1">
               {Array.from({ length: Math.min(removedPool, 6) }, (_, i) => (
@@ -47,7 +46,7 @@ export default function PlayerArea({ player, removedPool, isRolling, showEffects
           dice={player.currentRoll}
           diceCount={player.diceCount}
           isRolling={isRolling}
-          showEffects={showEffects}
+          highlights={highlights}
           inverted={inverted}
         />
       </div>

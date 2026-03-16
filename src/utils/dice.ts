@@ -1,4 +1,4 @@
-import type { DieValue, SpecialEffect, SpecialEffectType, PlayerId } from '../types/game';
+import type { DieValue, SpecialEffect, SpecialEffectType, PlayerId, DieHighlight } from '../types/game';
 
 export function rollDie(): DieValue {
   return (Math.floor(Math.random() * 6) + 1) as DieValue;
@@ -32,14 +32,15 @@ export function isFullHouse(dice: DieValue[]): boolean {
 }
 
 export function checkInstantWin(dice: DieValue[], diceCount: number): boolean {
-  if (dice.length === 0) return false;
-  // 5個ぞろ目: all same
-  if (hasNOfAKind(dice, 5)) return true;
-  // 4個ぞろ目: 4 of a kind when holding 5 or 4
-  if ((diceCount === 5 || diceCount === 4) && hasNOfAKind(dice, 4)) return true;
-  // フルハウス: only when holding 5
-  if (diceCount === 5 && isFullHouse(dice)) return true;
-  return false;
+  return getInstantWinCondition(dice, diceCount) !== null;
+}
+
+export function getInstantWinCondition(dice: DieValue[], diceCount: number): string | null {
+  if (dice.length === 0) return null;
+  if (hasNOfAKind(dice, 5)) return '5個ぞろ目';
+  if ((diceCount === 5 || diceCount === 4) && hasNOfAKind(dice, 4)) return '4個ぞろ目';
+  if (diceCount === 5 && isFullHouse(dice)) return 'フルハウス';
+  return null;
 }
 
 export function getTripleEffects(dice: DieValue[], player: PlayerId): SpecialEffect[] {
@@ -70,6 +71,16 @@ export function countOnes(dice: DieValue[]): number {
 
 export function countSixes(dice: DieValue[]): number {
   return dice.filter(d => d === 6).length;
+}
+
+export function computeDiceHighlights(dice: DieValue[]): DieHighlight[] {
+  const counts = countValues(dice);
+  return dice.map(v => {
+    if (v === 1) return 'ghost';
+    if (v === 6) return 'push';
+    if (counts.get(v)! >= 3 && v >= 2 && v <= 5) return 'triple';
+    return 'normal';
+  });
 }
 
 // Die face SVG dots positions for rendering

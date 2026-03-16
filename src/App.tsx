@@ -8,7 +8,8 @@ import ChoiceDialog from './components/ChoiceDialog';
 import VictoryScreen from './components/VictoryScreen';
 import DiceEffects, { nextEffectId } from './components/DiceEffects';
 import type { DiceEffect } from './components/DiceEffects';
-import { countOnes, countSixes } from './utils/dice';
+import type { DieHighlight } from './types/game';
+import { countOnes, countSixes, computeDiceHighlights } from './utils/dice';
 
 function App() {
   const [screen, setScreen] = useState<'title' | 'rule' | 'game'>('title');
@@ -17,8 +18,6 @@ function App() {
   const [removedChanged, setRemovedChanged] = useState(false);
   const [diceEffects, setDiceEffects] = useState<DiceEffect[]>([]);
   const prevRemovedRef = useRef(0);
-  // Ref-based guard: prevents the resolving_normal effect from firing twice
-  // for the same turn, without causing re-renders or cleanup cycles.
   const resolvedTurnRef = useRef(-1);
 
   const {
@@ -41,15 +40,15 @@ function App() {
     }
   }, [state.removedPool]);
 
-  // When phase becomes 'resolving_normal', immediately resolve game logic
-  // and fire cosmetic animations as fire-and-forget (no blocking).
+  // When phase becomes 'resolving_normal':
+  // 1. Show effect highlights for 300ms
+  // 2. Then resolve game logic
   useEffect(() => {
     if (state.phase !== 'resolving_normal') return;
-    // Guard: only fire once per turn to prevent double-dispatch
     if (resolvedTurnRef.current === state.turn) return;
     resolvedTurnRef.current = state.turn;
 
-    // Fire cosmetic effects (non-blocking)
+    // Fire cosmetic overlay effects
     const effects: DiceEffect[] = [];
     const p1Ones = countOnes(state.player1.currentRoll);
     const p2Ones = countOnes(state.player2.currentRoll);
@@ -66,24 +65,28 @@ function App() {
       effects.push({ id: nextEffectId(), type: 'push_down', count: p2Sixes });
     }
 
+    // Show highlights on dice
+    setShowEffects(true);
     if (effects.length > 0) {
-      setShowEffects(true);
       setDiceEffects(effects);
-      // Clean up visuals after animation completes — purely cosmetic
-      setTimeout(() => {
-        setShowEffects(false);
-        setDiceEffects([]);
-      }, 350);
     }
 
-    // Resolve game logic immediately — never blocked by animation
-    resolveNormal();
+    // After effect animation, resolve game logic
+    const t = setTimeout(() => {
+      setShowEffects(false);
+      setDiceEffects([]);
+      resolveNormal();
+    }, 300);
+
+    return () => clearTimeout(t);
   }, [state.phase, state.turn, state.player1.currentRoll, state.player2.currentRoll, resolveNormal]);
 
-  // Safety: if somehow stuck in resolving_normal for >500ms, force resolve
+  // Safety fallback: if stuck in resolving_normal for >500ms, force resolve
   useEffect(() => {
     if (state.phase !== 'resolving_normal') return;
     const fallback = setTimeout(() => {
+      setShowEffects(false);
+      setDiceEffects([]);
       resolveNormal();
     }, 500);
     return () => clearTimeout(fallback);
@@ -142,6 +145,14 @@ function App() {
 
   const getPlayerName = (id: number) => id === 1 ? state.player1.name : state.player2.name;
 
+  // Compute per-die highlights
+  const p1Highlights: DieHighlight[] | undefined = showEffects
+    ? computeDiceHighlights(state.player1.currentRoll)
+    : undefined;
+  const p2Highlights: DieHighlight[] | undefined = showEffects
+    ? computeDiceHighlights(state.player2.currentRoll)
+    : undefined;
+
   if (screen === 'title') {
     return <TitleScreen onStart={() => setScreen('game')} onShowRules={() => setScreen('rule')} />;
   }
@@ -150,8 +161,8 @@ function App() {
     return <RuleScreen onBack={() => setScreen('title')} />;
   }
 
-  const isInstantWin = (state.phase === 'round_end' || state.phase === 'match_end') &&
-    !state.isDraw && state.animationPhase === 'victory';
+  const isInstantWin = state.instantWinCondition !== null &&
+    (state.phase === 'round_end' || state.phase === 'match_end');
 
   return (
     <div className={`min-h-[100dvh] bg-navy-900 text-cream flex flex-col overflow-hidden relative ${shaking ? 'animate-screen-shake' : ''}`}>
@@ -169,7 +180,7 @@ function App() {
           player={state.player2}
           removedPool={state.removedPool}
           isRolling={state.animationPhase === 'rolling'}
-          showEffects={showEffects}
+          highlights={p2Highlights}
           removedChanged={removedChanged}
           inverted
         />
@@ -231,7 +242,7 @@ function App() {
           player={state.player1}
           removedPool={state.removedPool}
           isRolling={state.animationPhase === 'rolling'}
-          showEffects={showEffects}
+          highlights={p1Highlights}
           removedChanged={removedChanged}
         />
       </div>
@@ -257,6 +268,8 @@ function App() {
           winnerName={state.winner ? getPlayerName(state.winner) : ''}
           onNext={nextRound}
           isInstantWin={isInstantWin}
+          instantWinCondition={state.instantWinCondition}
+          instantWinDice={state.instantWinDice}
         />
       )}
 
@@ -270,6 +283,8 @@ function App() {
           onNext={restartMatch}
           onGoToTitle={handleGoToTitle}
           isInstantWin={isInstantWin}
+          instantWinCondition={state.instantWinCondition}
+          instantWinDice={state.instantWinDice}
         />
       )}
     </div>

@@ -86,9 +86,9 @@ export function applyChoice(
         const tempCount = playerState.diceCount;
         playerState.diceCount = opponentState.diceCount;
         opponentState.diceCount = tempCount;
-        logs.push(`${playerName}が入れ替えを実行！ダイスが入れ替わった！`);
+        logs.push(`${playerName}：2×3発動 → ${opponentName}とダイスを入れ替え！`);
       } else {
-        logs.push(`${playerName}は入れ替えをしなかった`);
+        logs.push(`${playerName}：2×3 → 入れ替えをスキップ`);
       }
       break;
     }
@@ -97,9 +97,9 @@ export function applyChoice(
       if (toAdd > 0) {
         opponentState.diceCount += toAdd;
         newState.removedPool -= toAdd;
-        logs.push(`${playerName}の呪い！${opponentName}に除外済みダイスを${toAdd}個追加！`);
+        logs.push(`${playerName}：3×3発動 → ${opponentName}に除外済み${toAdd}個追加！`);
       } else {
-        logs.push(`除外済みダイスがないため効果なし`);
+        logs.push(`${playerName}：3×3 → 除外済みダイスなし、効果なし`);
       }
       break;
     }
@@ -108,9 +108,9 @@ export function applyChoice(
       if (toAdd > 0) {
         opponentState.diceCount += toAdd;
         newState.removedPool -= toAdd;
-        logs.push(`${playerName}の呪い！${opponentName}に除外済みダイスを${toAdd}個追加！`);
+        logs.push(`${playerName}：4×3発動 → ${opponentName}に除外済み${toAdd}個追加！`);
       } else {
-        logs.push(`除外済みダイスがないため効果なし`);
+        logs.push(`${playerName}：4×3 → 除外済みダイスなし、効果なし`);
       }
       break;
     }
@@ -119,12 +119,12 @@ export function applyChoice(
         const toRemove = Math.min(2, playerState.diceCount);
         playerState.diceCount -= toRemove;
         newState.removedPool += toRemove;
-        logs.push(`${playerName}がダイスを${toRemove}個成仏させた！`);
+        logs.push(`${playerName}：5×3発動 → ${toRemove}個成仏させた`);
       } else {
         if (playerState.diceCount > 0) {
           playerState.diceCount -= 1;
           opponentState.diceCount += 1;
-          logs.push(`${playerName}がダイスを1個${opponentName}に押し付けた！`);
+          logs.push(`${playerName}：5×3発動 → ${opponentName}に1個押し付け！`);
         }
       }
       break;
@@ -155,12 +155,12 @@ export function applyNormalEffects(state: GameState): { state: GameState; logMes
   if (p1Ones > 0) {
     p1.diceCount -= p1Ones;
     removedPool += p1Ones;
-    logs.push(`${p1.name}：${p1Ones}個のダイスが成仏した`);
+    logs.push(`${p1.name}：1が出た → ${p1Ones}個成仏`);
   }
   if (p2Ones > 0) {
     p2.diceCount -= p2Ones;
     removedPool += p2Ones;
-    logs.push(`${p2.name}：${p2Ones}個のダイスが成仏した`);
+    logs.push(`${p2.name}：1が出た → ${p2Ones}個成仏`);
   }
 
   // Count 6s (give to opponent)
@@ -170,12 +170,12 @@ export function applyNormalEffects(state: GameState): { state: GameState; logMes
   if (p1Sixes > 0) {
     p1.diceCount -= p1Sixes;
     p2.diceCount += p1Sixes;
-    logs.push(`${p1.name}：${p1Sixes}個のダイスを${p2.name}に押し付けた`);
+    logs.push(`${p1.name}：6が出た → ${p2.name}に${p1Sixes}個渡す`);
   }
   if (p2Sixes > 0) {
     p2.diceCount -= p2Sixes;
     p1.diceCount += p2Sixes;
-    logs.push(`${p2.name}：${p2Sixes}個のダイスを${p1.name}に押し付けた`);
+    logs.push(`${p2.name}：6が出た → ${p1.name}に${p2Sixes}個渡す`);
   }
 
   return {

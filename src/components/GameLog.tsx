@@ -14,7 +14,7 @@ export default function GameLog({ log }: GameLogProps) {
     }
   }, [log]);
 
-  const recentLogs = log.slice(-15);
+  const recentLogs = log.slice(-5);
 
   return (
     <div
@@ -27,7 +27,11 @@ export default function GameLog({ log }: GameLogProps) {
           className={`${
             entry.message.startsWith('---') || entry.message.startsWith('===')
               ? 'text-ghost-orange font-bold'
-              : 'text-teal-400/80'
+              : entry.message.includes('即勝利')
+                ? 'text-yellow-400 font-bold'
+                : entry.message.includes('→')
+                  ? 'text-cream/90'
+                  : 'text-teal-400/80'
           }`}
         >
           {entry.message}

@@ -2,6 +2,8 @@ export type DieValue = 1 | 2 | 3 | 4 | 5 | 6;
 
 export type PlayerId = 1 | 2;
 
+export type DieHighlight = 'normal' | 'ghost' | 'push' | 'triple' | 'instant-win';
+
 export interface PlayerState {
   id: PlayerId;
   name: string;
@@ -67,6 +69,9 @@ export interface GameState {
   matchWinner: PlayerId | null;
   isDraw: boolean;
   animationPhase: 'idle' | 'rolling' | 'removing' | 'moving' | 'victory';
+  instantWinCondition: string | null;
+  instantWinDice: DieValue[];
+  instantWinPlayer: PlayerId | null;
 }
 
 export type GameAction =

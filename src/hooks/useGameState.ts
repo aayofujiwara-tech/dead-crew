@@ -6,7 +6,7 @@ import type {
   PlayerId,
   DieValue,
 } from '../types/game';
-import { rollDice, checkInstantWin } from '../utils/dice';
+import { rollDice, getInstantWinCondition } from '../utils/dice';
 import {
   createLogEntry,
   resetLogCounter,
@@ -44,6 +44,9 @@ function createInitialState(): GameState {
     matchWinner: null,
     isDraw: false,
     animationPhase: 'idle',
+    instantWinCondition: null,
+    instantWinDice: [],
+    instantWinPlayer: null,
   };
 }
 
@@ -65,6 +68,9 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         animationPhase: 'rolling',
         player1: { ...state.player1, currentRoll: p1Roll },
         player2: { ...state.player2, currentRoll: p2Roll },
+        instantWinCondition: null,
+        instantWinDice: [],
+        instantWinPlayer: null,
         log: [
           ...state.log,
           createLogEntry(`--- ターン ${newTurn} ---`, newTurn),
@@ -83,30 +89,46 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     }
 
     case 'CHECK_INSTANT_WIN': {
-      const p1Win = checkInstantWin(state.player1.currentRoll, state.player1.diceCount);
-      const p2Win = checkInstantWin(state.player2.currentRoll, state.player2.diceCount);
+      const p1Cond = getInstantWinCondition(state.player1.currentRoll, state.player1.diceCount);
+      const p2Cond = getInstantWinCondition(state.player2.currentRoll, state.player2.diceCount);
 
-      if (p1Win && p2Win) {
+      if (p1Cond && p2Cond) {
         let s = addLogs(state, ['両者とも即勝利条件！引き分け！']);
         return { ...s, phase: 'round_end', isDraw: true, animationPhase: 'victory' };
       }
-      if (p1Win) {
-        let s = addLogs(state, [`${state.player1.name}が即勝利条件達成！`]);
+      if (p1Cond) {
+        let s = addLogs(state, [`${state.player1.name}：${p1Cond}達成 → 即勝利！`]);
         const newScore = state.player1.matchScore + 1;
         const p1 = { ...state.player1, matchScore: newScore };
+        const base = {
+          ...s,
+          player1: p1,
+          animationPhase: 'victory' as const,
+          instantWinCondition: p1Cond,
+          instantWinDice: state.player1.currentRoll,
+          instantWinPlayer: 1 as PlayerId,
+        };
         if (newScore >= 2) {
-          return { ...s, player1: p1, phase: 'match_end', matchWinner: 1, animationPhase: 'victory' };
+          return { ...base, phase: 'match_end', matchWinner: 1 };
         }
-        return { ...s, player1: p1, phase: 'round_end', winner: 1, animationPhase: 'victory' };
+        return { ...base, phase: 'round_end', winner: 1 };
       }
-      if (p2Win) {
-        let s = addLogs(state, [`${state.player2.name}が即勝利条件達成！`]);
+      if (p2Cond) {
+        let s = addLogs(state, [`${state.player2.name}：${p2Cond}達成 → 即勝利！`]);
         const newScore = state.player2.matchScore + 1;
         const p2 = { ...state.player2, matchScore: newScore };
+        const base = {
+          ...s,
+          player2: p2,
+          animationPhase: 'victory' as const,
+          instantWinCondition: p2Cond,
+          instantWinDice: state.player2.currentRoll,
+          instantWinPlayer: 2 as PlayerId,
+        };
         if (newScore >= 2) {
-          return { ...s, player2: p2, phase: 'match_end', matchWinner: 2, animationPhase: 'victory' };
+          return { ...base, phase: 'match_end', matchWinner: 2 };
         }
-        return { ...s, player2: p2, phase: 'round_end', winner: 2, animationPhase: 'victory' };
+        return { ...base, phase: 'round_end', winner: 2 };
       }
 
       // No instant win, proceed to check special effects
@@ -148,7 +170,6 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       const hasP2 = effects.some(e => e.player === 2);
 
       if (hasP1 && hasP2) {
-        // Need priority roll
         return {
           ...state,
           pendingChoices: choices,
@@ -157,7 +178,6 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         };
       }
 
-      // Only one player has choices
       const firstChoice = choices[0];
       return {
         ...state,
@@ -178,7 +198,6 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         `優先度ダイス：${state.player1.name}=${p1Die} vs ${state.player2.name}=${p2Die}`,
       ]);
 
-      // Higher roll goes first - sort pending choices accordingly
       const firstPlayer: PlayerId = p1Die > p2Die ? 1 : 2;
       const sorted = [...state.pendingChoices].sort((a, b) => {
         if (a.player === firstPlayer && b.player !== firstPlayer) return -1;
@@ -220,7 +239,6 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       const result = applyNormalEffects(state);
       let s = addLogs(result.state, result.logMessages);
 
-      // Check round end
       const p1Zero = s.player1.diceCount <= 0;
       const p2Zero = s.player2.diceCount <= 0;
 
@@ -264,6 +282,9 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         currentChoiceIndex: 0,
         priorityRolls: null,
         animationPhase: 'idle',
+        instantWinCondition: null,
+        instantWinDice: [],
+        instantWinPlayer: null,
         log: [...state.log, createLogEntry(`=== ラウンド ${state.round + 1} 開始 ===`, state.turn)],
       };
     }
@@ -291,11 +312,15 @@ export function useGameState() {
   const rollAndProcess = useCallback(() => {
     dispatch({ type: 'ROLL_DICE' });
 
-    // Brief animation then immediately show results and process
+    // Phase 1: roll animation (250ms)
     setTimeout(() => {
       dispatch({ type: 'SHOW_RESULTS' });
-      dispatch({ type: 'CHECK_INSTANT_WIN' });
     }, 250);
+
+    // Phase 2: viewing pause (800ms) then process
+    setTimeout(() => {
+      dispatch({ type: 'CHECK_INSTANT_WIN' });
+    }, 1050);
   }, []);
 
   const rollPriority = useCallback(() => {
