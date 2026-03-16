@@ -136,7 +136,6 @@ function App() {
           choice={currentChoice}
           playerName={getPlayerName(currentChoice.player)}
           onChoose={makeChoice}
-          inverted={currentChoice.player === 2}
         />
       )}
 

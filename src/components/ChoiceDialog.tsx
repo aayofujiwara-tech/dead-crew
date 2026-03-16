@@ -4,17 +4,15 @@ interface ChoiceDialogProps {
   choice: PendingChoice;
   playerName: string;
   onChoose: (player: PlayerId, value: string) => void;
-  inverted?: boolean;
 }
 
-export default function ChoiceDialog({ choice, playerName, onChoose, inverted }: ChoiceDialogProps) {
+export default function ChoiceDialog({ choice, playerName, onChoose }: ChoiceDialogProps) {
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-      <div className={`
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 rotate-0">
+      <div className="
         bg-navy-700 border-2 border-teal-500 rounded-xl p-6 max-w-sm w-full
         shadow-[0_0_30px_rgba(45,212,191,0.2)]
-        ${inverted ? 'rotate-180' : ''}
-      `}>
+      ">
         <h3 className="font-pirate text-xl text-ghost-orange mb-2 text-center">
           {playerName}の選択
         </h3>
