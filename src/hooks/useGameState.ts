@@ -319,10 +319,10 @@ export function useGameState() {
       dispatch({ type: 'SHOW_RESULTS' });
     }, 250);
 
-    // Phase 2: viewing pause (800ms) then process
+    // Phase 2: viewing pause (500ms) then process
     setTimeout(() => {
       dispatch({ type: 'CHECK_INSTANT_WIN' });
-    }, 1050);
+    }, 750);
   }, []);
 
   const rollPriority = useCallback(() => {

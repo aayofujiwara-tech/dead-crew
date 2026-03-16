@@ -1,56 +1,68 @@
 import type { DieValue, DieHighlight } from '../types/game';
 import { dieFacePositions } from '../utils/dice';
 
+export type DieAnimState = 'none' | 'fade-out' | 'move-up' | 'move-down' | 'hidden';
+
 interface DiceDisplayProps {
   dice: DieValue[];
   diceCount: number;
   isRolling: boolean;
   highlights?: DieHighlight[];
+  dieAnims?: DieAnimState[];
   inverted?: boolean;
 }
 
-const HIGHLIGHT_STYLES: Record<DieHighlight, { bg: string; border: string; animation: string; hidden: boolean }> = {
+const HIGHLIGHT_STYLES: Record<DieHighlight, { bg: string; border: string; animation: string }> = {
   'normal': {
     bg: 'bg-cream',
     border: 'border-navy-600',
     animation: '',
-    hidden: false,
   },
   'ghost': {
     bg: 'bg-gray-400',
     border: 'border-gray-500',
     animation: '',
-    hidden: true,
   },
   'push': {
     bg: 'bg-orange-200',
     border: 'border-ghost-orange',
     animation: '',
-    hidden: true,
   },
   'triple': {
     bg: 'bg-teal-200',
     border: 'border-teal-400 shadow-[0_0_12px_rgba(45,212,191,0.6)]',
     animation: 'animate-dice-settle',
-    hidden: false,
   },
   'instant-win': {
     bg: 'bg-yellow-200',
     border: 'border-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.7)]',
     animation: 'animate-dice-gold-pulse',
-    hidden: false,
   },
 };
 
-function DieFace({ value, isRolling, highlight }: { value: DieValue; isRolling: boolean; highlight: DieHighlight }) {
+function getAnimStyle(anim: DieAnimState): React.CSSProperties {
+  switch (anim) {
+    case 'fade-out':
+      return { opacity: 0, transition: 'opacity 300ms ease-out' };
+    case 'move-up':
+      return { transform: 'translateY(-40vh)', opacity: 0, transition: 'transform 400ms ease-in, opacity 400ms ease-in' };
+    case 'move-down':
+      return { transform: 'translateY(40vh)', opacity: 0, transition: 'transform 400ms ease-in, opacity 400ms ease-in' };
+    case 'hidden':
+      return { opacity: 0 };
+    default:
+      return {};
+  }
+}
+
+function DieFace({ value, isRolling, highlight, anim }: { value: DieValue; isRolling: boolean; highlight: DieHighlight; anim: DieAnimState }) {
   const dots = dieFacePositions[value];
   const style = HIGHLIGHT_STYLES[highlight];
   const animClass = isRolling ? 'animate-dice-roll' : style.animation;
-  // Hide source die immediately when it's being moved/removed (overlay handles the visual)
-  const hiddenClass = !isRolling && style.hidden ? 'opacity-0' : '';
+  const animStyle = getAnimStyle(anim);
 
   return (
-    <div className={`relative ${hiddenClass}`}>
+    <div className="relative" style={animStyle}>
       <div
         className={`
           w-12 h-12 sm:w-14 sm:h-14 rounded-lg shadow-lg
@@ -84,7 +96,7 @@ function EmptyDie() {
   );
 }
 
-export default function DiceDisplay({ dice, diceCount, isRolling, highlights, inverted }: DiceDisplayProps) {
+export default function DiceDisplay({ dice, diceCount, isRolling, highlights, dieAnims, inverted }: DiceDisplayProps) {
   return (
     <div className={`flex flex-wrap gap-2 justify-center ${inverted ? 'rotate-180' : ''}`}>
       {dice.length > 0
@@ -94,6 +106,7 @@ export default function DiceDisplay({ dice, diceCount, isRolling, highlights, in
               value={value}
               isRolling={isRolling}
               highlight={highlights?.[i] ?? 'normal'}
+              anim={dieAnims?.[i] ?? 'none'}
             />
           ))
         : Array.from({ length: diceCount }, (_, i) => (
