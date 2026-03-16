@@ -13,7 +13,7 @@ interface PlayerAreaProps {
 
 export default function PlayerArea({ player, removedPool, isRolling, showEffects = false, removedChanged = false, inverted }: PlayerAreaProps) {
   return (
-    <div className={`flex flex-col items-center gap-3 p-4 ${inverted ? 'rotate-180' : ''}`}>
+    <div className={`flex flex-col items-center gap-3 p-4 ${inverted ? 'flex-col-reverse' : ''}`}>
       <div className="flex items-center gap-3 w-full justify-between">
         <div className="flex items-center gap-2">
           <span className="text-xl">👻</span>
@@ -48,6 +48,7 @@ export default function PlayerArea({ player, removedPool, isRolling, showEffects
           diceCount={player.diceCount}
           isRolling={isRolling}
           showEffects={showEffects}
+          inverted={inverted}
         />
       </div>
     </div>
