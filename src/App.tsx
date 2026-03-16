@@ -16,8 +16,10 @@ function App() {
   const [showEffects, setShowEffects] = useState(false);
   const [removedChanged, setRemovedChanged] = useState(false);
   const [diceEffects, setDiceEffects] = useState<DiceEffect[]>([]);
-  const [animating, setAnimating] = useState(false);
   const prevRemovedRef = useRef(0);
+  // Ref-based guard: prevents the resolving_normal effect from firing twice
+  // for the same turn, without causing re-renders or cleanup cycles.
+  const resolvedTurnRef = useRef(-1);
 
   const {
     state,
@@ -39,41 +41,53 @@ function App() {
     }
   }, [state.removedPool]);
 
-  // Show effect highlights after results are shown, then auto-resolve
+  // When phase becomes 'resolving_normal', immediately resolve game logic
+  // and fire cosmetic animations as fire-and-forget (no blocking).
   useEffect(() => {
-    if (state.phase === 'resolving_normal' && !animating) {
-      // Trigger effect animations
+    if (state.phase !== 'resolving_normal') return;
+    // Guard: only fire once per turn to prevent double-dispatch
+    if (resolvedTurnRef.current === state.turn) return;
+    resolvedTurnRef.current = state.turn;
+
+    // Fire cosmetic effects (non-blocking)
+    const effects: DiceEffect[] = [];
+    const p1Ones = countOnes(state.player1.currentRoll);
+    const p2Ones = countOnes(state.player2.currentRoll);
+    const p1Sixes = countSixes(state.player1.currentRoll);
+    const p2Sixes = countSixes(state.player2.currentRoll);
+
+    if (p1Ones + p2Ones > 0) {
+      effects.push({ id: nextEffectId(), type: 'ghost', count: p1Ones + p2Ones });
+    }
+    if (p1Sixes > 0) {
+      effects.push({ id: nextEffectId(), type: 'push_up', count: p1Sixes });
+    }
+    if (p2Sixes > 0) {
+      effects.push({ id: nextEffectId(), type: 'push_down', count: p2Sixes });
+    }
+
+    if (effects.length > 0) {
       setShowEffects(true);
-      setAnimating(true);
-
-      // Spawn overlay effects based on roll
-      const effects: DiceEffect[] = [];
-      const p1Ones = countOnes(state.player1.currentRoll);
-      const p2Ones = countOnes(state.player2.currentRoll);
-      const p1Sixes = countSixes(state.player1.currentRoll);
-      const p2Sixes = countSixes(state.player2.currentRoll);
-
-      if (p1Ones + p2Ones > 0) {
-        effects.push({ id: nextEffectId(), type: 'ghost', count: p1Ones + p2Ones });
-      }
-      if (p1Sixes > 0) {
-        effects.push({ id: nextEffectId(), type: 'push_up', count: p1Sixes });
-      }
-      if (p2Sixes > 0) {
-        effects.push({ id: nextEffectId(), type: 'push_down', count: p2Sixes });
-      }
       setDiceEffects(effects);
-
-      // After brief animation window, resolve
-      const t = setTimeout(() => {
-        resolveNormal();
-        setAnimating(false);
+      // Clean up visuals after animation completes — purely cosmetic
+      setTimeout(() => {
         setShowEffects(false);
         setDiceEffects([]);
-      }, 280);
-      return () => clearTimeout(t);
+      }, 350);
     }
-  }, [state.phase, animating, resolveNormal, state.player1.currentRoll, state.player2.currentRoll]);
+
+    // Resolve game logic immediately — never blocked by animation
+    resolveNormal();
+  }, [state.phase, state.turn, state.player1.currentRoll, state.player2.currentRoll, resolveNormal]);
+
+  // Safety: if somehow stuck in resolving_normal for >500ms, force resolve
+  useEffect(() => {
+    if (state.phase !== 'resolving_normal') return;
+    const fallback = setTimeout(() => {
+      resolveNormal();
+    }, 500);
+    return () => clearTimeout(fallback);
+  }, [state.phase, resolveNormal]);
 
   // Screen shake on roll
   const handleRoll = useCallback(() => {
@@ -86,14 +100,13 @@ function App() {
 
   // Spawn effects for special choices (swap, curse)
   const handleChoice = useCallback((player: Parameters<typeof makeChoice>[0], choice: Parameters<typeof makeChoice>[1]) => {
-    // Figure out what effect is being applied
     const currentPending = state.pendingChoices[state.currentChoiceIndex];
     if (currentPending) {
       const effects: DiceEffect[] = [];
       if (currentPending.effect.type === 'swap_all' && choice === 'swap') {
         effects.push({ id: nextEffectId(), type: 'swap', count: 1 });
       }
-      if ((currentPending.effect.type === 'add_removed_3' || currentPending.effect.type === 'add_removed_4')) {
+      if (currentPending.effect.type === 'add_removed_3' || currentPending.effect.type === 'add_removed_4') {
         const count = currentPending.effect.type === 'add_removed_3' ? 3 : 4;
         effects.push({ id: nextEffectId(), type: 'curse', count: Math.min(count, state.removedPool) });
       }
