@@ -140,14 +140,27 @@ function App() {
     return () => clearTimeout(fallback);
   }, [state.phase, state.turn, state.player1.currentRoll, state.player2.currentRoll, resolveNormal]);
 
-  // Screen shake on roll — reset animations from previous turn
+  // Reset inline animation styles only AFTER React has re-rendered with new dice.
+  // When ROLL_DICE fires, animationPhase becomes 'rolling' and currentRoll changes
+  // in the same render batch. The useEffect runs after DOM commit, so stale inline
+  // styles (visibility:hidden etc.) are safely cleared on the reused DOM nodes.
+  // The dice-roll CSS animation starts at opacity:0 so no flash occurs.
+  useEffect(() => {
+    if (state.animationPhase === 'rolling') {
+      resetDiceStyles();
+    }
+  }, [state.animationPhase]);
+
+  // Screen shake on roll
   const handleRoll = useCallback(() => {
     if (state.phase === 'waiting') {
       setShaking(true);
       setShowEffects(false);
       setP1Incoming(0);
       setP2Incoming(0);
-      resetDiceStyles();
+      // NOTE: Do NOT call resetDiceStyles() here — the old dice are still in DOM
+      // with visibility:hidden. Clearing now would flash them for one frame.
+      // Styles are reset in the useEffect above after ROLL_DICE re-renders.
       setTimeout(() => setShaking(false), 150);
       rollAndProcess();
     }
