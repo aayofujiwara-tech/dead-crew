@@ -8,8 +8,9 @@ import ChoiceDialog from './components/ChoiceDialog';
 import VictoryScreen from './components/VictoryScreen';
 import DiceEffects, { nextEffectId } from './components/DiceEffects';
 import type { DiceEffect } from './components/DiceEffects';
-import type { DieHighlight } from './types/game';
+import type { DieHighlight, GameMode } from './types/game';
 import { countOnes, countSixes, computeDiceHighlights } from './utils/dice';
+import { cpuController } from './controllers/playerControllers';
 
 function App() {
   const [screen, setScreen] = useState<'title' | 'rule' | 'game'>('title');
@@ -142,7 +143,24 @@ function App() {
   }, [makeChoice, state.pendingChoices, state.currentChoiceIndex, state.removedPool]);
 
   const currentChoice = state.pendingChoices[state.currentChoiceIndex];
-  const showingChoice = (state.phase === 'resolving_choice_p1' || state.phase === 'resolving_choice_p2') && currentChoice;
+  const isCpuMode = state.mode === 'cpu';
+  const isCpuTurn = isCpuMode && currentChoice?.player === 2;
+  const showingChoice = (state.phase === 'resolving_choice_p1' || state.phase === 'resolving_choice_p2') && currentChoice && !isCpuTurn;
+
+  // Auto-resolve CPU choices after a short delay
+  useEffect(() => {
+    if (!isCpuTurn) return;
+    if (state.phase !== 'resolving_choice_p2') return;
+
+    const timer = setTimeout(() => {
+      const cpuChoice = cpuController.resolveChoice(currentChoice, state);
+      if (cpuChoice) {
+        handleChoice(2, cpuChoice);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [state.phase, state.currentChoiceIndex, isCpuTurn, currentChoice, state, handleChoice]);
 
   const handleGoToTitle = useCallback(() => {
     restartMatch();
@@ -160,8 +178,13 @@ function App() {
     ? computeDiceHighlights(state.player2.currentRoll)
     : undefined;
 
+  const handleStart = useCallback((mode: GameMode) => {
+    restartMatch(mode);
+    setScreen('game');
+  }, [restartMatch]);
+
   if (screen === 'title') {
-    return <TitleScreen onStart={() => setScreen('game')} onShowRules={() => setScreen('rule')} />;
+    return <TitleScreen onStart={handleStart} onShowRules={() => setScreen('rule')} />;
   }
 
   if (screen === 'rule') {
@@ -181,7 +204,7 @@ function App() {
         <div className="absolute bottom-20 right-5 text-4xl opacity-10 animate-float" style={{ animationDelay: '0.5s' }}>⚓</div>
       </div>
 
-      {/* Player 2 area (inverted) */}
+      {/* Player 2 area */}
       <div className="flex-1 flex flex-col justify-end border-b border-teal-600/20">
         <PlayerArea
           player={state.player2}
@@ -189,7 +212,8 @@ function App() {
           isRolling={state.animationPhase === 'rolling'}
           highlights={p2Highlights}
           removedChanged={removedChanged}
-          inverted
+          inverted={!isCpuMode}
+          isCpu={isCpuMode}
         />
       </div>
 
@@ -226,6 +250,12 @@ function App() {
             >
               振る！
             </button>
+          )}
+
+          {isCpuTurn && (
+            <div className="px-6 py-2 rounded-lg font-pirate text-lg text-ghost-orange animate-pulse">
+              CPUが選択中...
+            </div>
           )}
 
           {state.phase === 'resolving_priority' && (

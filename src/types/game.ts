@@ -54,7 +54,10 @@ export interface LogEntry {
   turn: number;
 }
 
+export type GameMode = 'cpu' | 'local';
+
 export interface GameState {
+  mode: GameMode;
   phase: GamePhase;
   turn: number;
   round: number;
@@ -85,5 +88,11 @@ export type GameAction =
   | { type: 'RESOLVE_NORMAL_EFFECTS' }
   | { type: 'CHECK_ROUND_END' }
   | { type: 'NEXT_ROUND' }
-  | { type: 'RESTART_MATCH' }
+  | { type: 'RESTART_MATCH'; mode?: GameMode }
   | { type: 'SET_ANIMATION'; phase: GameState['animationPhase'] };
+
+/** Abstraction for player input (human, CPU, or future remote player) */
+export interface PlayerController {
+  /** Resolve a pending choice. Returns the chosen value, or null if the human should decide via UI. */
+  resolveChoice(choice: PendingChoice, state: GameState): string | null;
+}

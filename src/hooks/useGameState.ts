@@ -2,6 +2,7 @@ import { useReducer, useCallback } from 'react';
 import type {
   GameState,
   GameAction,
+  GameMode,
   PlayerState,
   PlayerId,
   DieValue,
@@ -27,9 +28,10 @@ function createInitialPlayer(id: PlayerId): PlayerState {
   };
 }
 
-function createInitialState(): GameState {
+function createInitialState(mode: GameMode = 'local'): GameState {
   resetLogCounter();
   return {
+    mode,
     phase: 'waiting',
     turn: 0,
     round: 1,
@@ -290,7 +292,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     }
 
     case 'RESTART_MATCH': {
-      const fresh = createInitialState();
+      const fresh = createInitialState(action.mode ?? state.mode);
       return {
         ...fresh,
         log: [createLogEntry('=== 新しいマッチ開始！ ===', 0)],
@@ -345,8 +347,8 @@ export function useGameState() {
     dispatch({ type: 'NEXT_ROUND' });
   }, []);
 
-  const restartMatch = useCallback(() => {
-    dispatch({ type: 'RESTART_MATCH' });
+  const restartMatch = useCallback((mode?: GameMode) => {
+    dispatch({ type: 'RESTART_MATCH', mode });
   }, []);
 
   return {

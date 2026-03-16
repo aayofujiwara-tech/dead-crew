@@ -1,5 +1,7 @@
+import type { GameMode } from '../types/game';
+
 interface TitleScreenProps {
-  onStart: () => void;
+  onStart: (mode: GameMode) => void;
   onShowRules: () => void;
 }
 
@@ -41,9 +43,9 @@ export default function TitleScreen({ onStart, onShowRules }: TitleScreenProps) 
           幽霊船員を全て成仏させろ
         </p>
 
-        {/* Start button */}
+        {/* Start buttons */}
         <button
-          onClick={onStart}
+          onClick={() => onStart('cpu')}
           className="
             px-10 py-4 rounded-xl font-pirate text-2xl
             bg-teal-600 text-navy-900
@@ -51,10 +53,24 @@ export default function TitleScreen({ onStart, onShowRules }: TitleScreenProps) 
             transition-all duration-200
             shadow-[0_0_30px_rgba(45,212,191,0.4)]
             animate-glow-pulse
+            mb-3
+          "
+        >
+          CPU と対戦
+        </button>
+
+        <button
+          onClick={() => onStart('local')}
+          className="
+            px-10 py-3 rounded-xl font-pirate text-xl
+            bg-navy-700 text-teal-400 border border-teal-600/50
+            hover:bg-teal-600/20 hover:border-teal-400
+            active:scale-95
+            transition-all duration-200
             mb-4
           "
         >
-          出航する！
+          2人で対戦
         </button>
 
         {/* Rules button */}

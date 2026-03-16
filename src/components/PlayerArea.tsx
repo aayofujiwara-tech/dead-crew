@@ -9,15 +9,21 @@ interface PlayerAreaProps {
   highlights?: DieHighlight[];
   removedChanged?: boolean;
   inverted?: boolean;
+  isCpu?: boolean;
 }
 
-export default function PlayerArea({ player, removedPool, isRolling, highlights, removedChanged = false, inverted }: PlayerAreaProps) {
+export default function PlayerArea({ player, removedPool, isRolling, highlights, removedChanged = false, inverted, isCpu }: PlayerAreaProps) {
   return (
     <div className={`flex flex-col items-center gap-3 p-4 ${inverted ? 'flex-col-reverse' : ''}`}>
       <div className="flex items-center gap-3 w-full justify-between">
         <div className="flex items-center gap-2">
           <span className="text-xl">👻</span>
           <h2 className="font-pirate text-xl text-cream">{player.name}</h2>
+          {isCpu && (
+            <span className="text-xs px-2 py-0.5 rounded bg-ghost-orange/20 text-ghost-orange border border-ghost-orange/40 font-bold">
+              CPU
+            </span>
+          )}
         </div>
         <MatchScore score={player.matchScore} />
       </div>
