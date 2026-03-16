@@ -74,12 +74,14 @@ function App() {
       setDiceEffects(effects);
     }
 
-    // After effect animation, resolve game logic
+    // After transfer animation completes (380ms), resolve game logic
     // Keep highlights persistent (cleared on next roll), only clear overlay effects
+    const hasPush = p1Sixes > 0 || p2Sixes > 0;
+    const delay = hasPush ? 400 : 300;
     const t = setTimeout(() => {
       setDiceEffects([]);
       resolveNormal();
-    }, 300);
+    }, delay);
 
     return () => clearTimeout(t);
   }, [state.phase, state.turn, state.player1.currentRoll, state.player2.currentRoll, resolveNormal]);

@@ -32,8 +32,8 @@ export default {
         'dice-roll': 'diceRoll 0.25s ease-out',
         'dice-settle': 'diceSettle 0.15s ease-out',
         'dice-ghost': 'diceGhost 0.3s ease-out forwards',
-        'dice-push-up': 'dicePushUp 0.28s ease-in-out forwards',
-        'dice-push-down': 'dicePushDown 0.28s ease-in-out forwards',
+        'dice-push-up': 'diceTransferUp 0.38s ease-in-out forwards',
+        'dice-push-down': 'diceTransferDown 0.38s ease-in-out forwards',
         'dice-swap': 'diceSwap 0.28s ease-in-out',
         'dice-curse': 'diceCurse 0.3s ease-out',
         'dice-gold-pulse': 'diceGoldPulse 1s ease-in-out infinite',
@@ -63,15 +63,17 @@ export default {
           '0%': { transform: 'translateY(0) scale(1)', opacity: '1' },
           '100%': { transform: 'translateY(-40px) scale(0.3)', opacity: '0' },
         },
-        dicePushUp: {
-          '0%': { transform: 'translateY(0) scale(1)' },
-          '40%': { transform: 'translateY(-20px) scale(1.1)' },
-          '100%': { transform: 'translateY(-60px) scale(0.8)', opacity: '0.3' },
+        diceTransferUp: {
+          '0%': { transform: 'translateY(0) scale(1)', opacity: '1' },
+          '60%': { transform: 'translateY(-30vh) scale(0.85)', opacity: '0.9' },
+          '80%': { transform: 'translateY(-32vh) scale(1.15)', opacity: '1' },
+          '100%': { transform: 'translateY(-30vh) scale(1)', opacity: '0' },
         },
-        dicePushDown: {
-          '0%': { transform: 'translateY(0) scale(1)' },
-          '40%': { transform: 'translateY(20px) scale(1.1)' },
-          '100%': { transform: 'translateY(60px) scale(0.8)', opacity: '0.3' },
+        diceTransferDown: {
+          '0%': { transform: 'translateY(0) scale(1)', opacity: '1' },
+          '60%': { transform: 'translateY(30vh) scale(0.85)', opacity: '0.9' },
+          '80%': { transform: 'translateY(32vh) scale(1.15)', opacity: '1' },
+          '100%': { transform: 'translateY(30vh) scale(1)', opacity: '0' },
         },
         diceSwap: {
           '0%': { transform: 'translateX(0)' },

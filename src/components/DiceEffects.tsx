@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { dieFacePositions } from '../utils/dice';
 
 export interface DiceEffect {
   id: number;
@@ -13,6 +14,20 @@ interface DiceEffectsProps {
 let effectKey = 0;
 export function nextEffectId() {
   return ++effectKey;
+}
+
+/** Small die face showing 6 dots for transfer animation */
+function DieFaceSix() {
+  const dots = dieFacePositions[6];
+  return (
+    <div className="w-10 h-10 rounded-lg shadow-lg flex items-center justify-center border-2 bg-orange-200 border-ghost-orange">
+      <svg viewBox="0 0 100 100" className="w-8 h-8">
+        {dots.map(([cx, cy], i) => (
+          <circle key={i} cx={cx} cy={cy} r={10} fill="#0a0e1a" />
+        ))}
+      </svg>
+    </div>
+  );
 }
 
 export default function DiceEffects({ effects }: DiceEffectsProps) {
@@ -53,26 +68,30 @@ function EffectItem({ effect }: { effect: DiceEffect }) {
 
     case 'push_up':
       return (
-        <div className="absolute bottom-[40%] left-1/2 -translate-x-1/2 flex gap-1">
+        <div className="absolute bottom-[40%] left-1/2 -translate-x-1/2 flex gap-2">
           {Array.from({ length: effect.count }, (_, i) => (
             <div
               key={i}
-              className="w-8 h-8 rounded bg-cream/80 animate-dice-push-up shadow-lg"
+              className="animate-dice-push-up"
               style={{ animationDelay: `${i * 40}ms` }}
-            />
+            >
+              <DieFaceSix />
+            </div>
           ))}
         </div>
       );
 
     case 'push_down':
       return (
-        <div className="absolute top-[40%] left-1/2 -translate-x-1/2 flex gap-1">
+        <div className="absolute top-[40%] left-1/2 -translate-x-1/2 flex gap-2">
           {Array.from({ length: effect.count }, (_, i) => (
             <div
               key={i}
-              className="w-8 h-8 rounded bg-cream/80 animate-dice-push-down shadow-lg"
+              className="animate-dice-push-down"
               style={{ animationDelay: `${i * 40}ms` }}
-            />
+            >
+              <DieFaceSix />
+            </div>
           ))}
         </div>
       );
