@@ -35,6 +35,8 @@ export default {
         'float': 'float 3s ease-in-out infinite',
         'glow-pulse': 'glowPulse 2s ease-in-out infinite',
         'victory-burst': 'victoryBurst 0.8s ease-out',
+        'wave': 'wave 8s linear infinite',
+        'wave-slow': 'waveSlow 12s linear infinite',
       },
       keyframes: {
         diceRoll: {
@@ -63,6 +65,14 @@ export default {
           '0%': { transform: 'scale(0)', opacity: '0' },
           '60%': { transform: 'scale(1.3)', opacity: '1' },
           '100%': { transform: 'scale(1)' },
+        },
+        wave: {
+          '0%': { transform: 'translateX(0)' },
+          '100%': { transform: 'translateX(-50%)' },
+        },
+        waveSlow: {
+          '0%': { transform: 'translateX(0)' },
+          '100%': { transform: 'translateX(-50%)' },
         },
       },
     },

@@ -1,11 +1,14 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { useGameState } from './hooks/useGameState';
+import TitleScreen from './components/TitleScreen';
 import PlayerArea from './components/PlayerArea';
 import GameLog from './components/GameLog';
 import ChoiceDialog from './components/ChoiceDialog';
 import VictoryScreen from './components/VictoryScreen';
 
 function App() {
+  const [screen, setScreen] = useState<'title' | 'game'>('title');
+
   const {
     state,
     rollAndProcess,
@@ -25,7 +28,16 @@ function App() {
   const currentChoice = state.pendingChoices[state.currentChoiceIndex];
   const showingChoice = (state.phase === 'resolving_choice_p1' || state.phase === 'resolving_choice_p2') && currentChoice;
 
+  const handleGoToTitle = useCallback(() => {
+    restartMatch();
+    setScreen('title');
+  }, [restartMatch]);
+
   const getPlayerName = (id: number) => id === 1 ? state.player1.name : state.player2.name;
+
+  if (screen === 'title') {
+    return <TitleScreen onStart={() => setScreen('game')} />;
+  }
 
   return (
     <div className="min-h-[100dvh] bg-navy-900 text-cream flex flex-col overflow-hidden relative">
@@ -151,6 +163,7 @@ function App() {
           isDraw={false}
           winnerName={state.matchWinner ? getPlayerName(state.matchWinner) : ''}
           onNext={restartMatch}
+          onGoToTitle={handleGoToTitle}
         />
       )}
     </div>

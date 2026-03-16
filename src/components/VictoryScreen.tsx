@@ -6,9 +6,10 @@ interface VictoryScreenProps {
   isDraw: boolean;
   winnerName: string;
   onNext: () => void;
+  onGoToTitle?: () => void;
 }
 
-export default function VictoryScreen({ type, winner: _winner, isDraw, winnerName, onNext }: VictoryScreenProps) {
+export default function VictoryScreen({ type, winner: _winner, isDraw, winnerName, onNext, onGoToTitle }: VictoryScreenProps) {
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
       <div className="animate-victory-burst text-center">
@@ -34,17 +35,31 @@ export default function VictoryScreen({ type, winner: _winner, isDraw, winnerNam
               <p className="text-teal-400/70 mb-6">幽霊船員を全て成仏させた！</p>
             </>
           )}
-          <button
-            onClick={onNext}
-            className="
-              px-6 py-3 rounded-xl font-pirate text-lg
-              bg-ghost-orange text-navy-900
-              hover:bg-orange-400 transition-all
-              shadow-[0_0_15px_rgba(249,115,22,0.4)]
-            "
-          >
-            {type === 'match' ? 'もう一度遊ぶ' : '次のラウンドへ'}
-          </button>
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={onNext}
+              className="
+                px-6 py-3 rounded-xl font-pirate text-lg
+                bg-ghost-orange text-navy-900
+                hover:bg-orange-400 transition-all
+                shadow-[0_0_15px_rgba(249,115,22,0.4)]
+              "
+            >
+              {type === 'match' ? 'もう一度遊ぶ' : '次のラウンドへ'}
+            </button>
+            {type === 'match' && onGoToTitle && (
+              <button
+                onClick={onGoToTitle}
+                className="
+                  px-6 py-2 rounded-xl font-pirate text-base
+                  bg-navy-800 text-teal-400 border border-teal-600/50
+                  hover:bg-teal-600/20 hover:border-teal-400 transition-all
+                "
+              >
+                タイトルに戻る
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
