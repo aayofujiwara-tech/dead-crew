@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { useGameState } from './hooks/useGameState';
 import TitleScreen from './components/TitleScreen';
 import PlayerArea from './components/PlayerArea';
@@ -18,6 +18,13 @@ function App() {
     nextRound,
     restartMatch,
   } = useGameState();
+
+  // Auto-resolve normal effects immediately when no choices are pending
+  useEffect(() => {
+    if (state.phase === 'resolving_normal') {
+      resolveNormal();
+    }
+  }, [state.phase, resolveNormal]);
 
   const handleRoll = useCallback(() => {
     if (state.phase === 'waiting') {
@@ -77,24 +84,21 @@ function App() {
 
         {/* Action buttons */}
         <div className="flex justify-center">
-          {state.phase === 'waiting' && (
+          {(state.phase === 'waiting' || state.phase === 'rolling' || state.phase === 'showing_results') && (
             <button
               onClick={handleRoll}
-              className="
+              disabled={state.phase !== 'waiting'}
+              className={`
                 px-8 py-3 rounded-xl font-pirate text-xl
-                bg-teal-600 text-navy-900
-                hover:bg-teal-400 active:scale-95
-                transition-all duration-200
-                shadow-[0_0_20px_rgba(45,212,191,0.3)]
-                animate-glow-pulse
-              "
+                transition-all duration-75
+                ${state.phase === 'waiting'
+                  ? 'bg-teal-600 text-navy-900 hover:bg-teal-400 active:scale-95 shadow-[0_0_20px_rgba(45,212,191,0.3)] animate-glow-pulse'
+                  : 'bg-teal-600/40 text-navy-900/60 cursor-not-allowed'
+                }
+              `}
             >
               振る！
             </button>
-          )}
-
-          {state.phase === 'showing_results' && (
-            <div className="text-teal-400 animate-pulse text-sm">処理中...</div>
           )}
 
           {state.phase === 'resolving_priority' && (
@@ -103,23 +107,10 @@ function App() {
               className="
                 px-6 py-2 rounded-lg font-pirate text-lg
                 bg-ghost-orange text-navy-900
-                hover:bg-orange-400 transition-all
+                hover:bg-orange-400 transition-all duration-75
               "
             >
               優先度ダイスを振る！
-            </button>
-          )}
-
-          {state.phase === 'resolving_normal' && (
-            <button
-              onClick={resolveNormal}
-              className="
-                px-6 py-2 rounded-lg font-pirate text-lg
-                bg-teal-600 text-navy-900
-                hover:bg-teal-400 transition-all
-              "
-            >
-              効果を処理する
             </button>
           )}
         </div>

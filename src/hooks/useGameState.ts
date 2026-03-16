@@ -291,13 +291,11 @@ export function useGameState() {
   const rollAndProcess = useCallback(() => {
     dispatch({ type: 'ROLL_DICE' });
 
-    // Animation sequence
+    // Brief animation then immediately show results and process
     setTimeout(() => {
       dispatch({ type: 'SHOW_RESULTS' });
-      setTimeout(() => {
-        dispatch({ type: 'CHECK_INSTANT_WIN' });
-      }, 800);
-    }, 600);
+      dispatch({ type: 'CHECK_INSTANT_WIN' });
+    }, 250);
   }, []);
 
   const rollPriority = useCallback(() => {
