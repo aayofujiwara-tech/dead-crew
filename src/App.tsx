@@ -44,56 +44,62 @@ function App() {
   }, [state.removedPool]);
 
   // When phase becomes 'resolving_normal':
-  // 1. Show effect highlights for 300ms
-  // 2. Then resolve game logic
+  // Sequential animation: 1s ghost (280ms) → 6s transfer (300ms) → resolve state
   useEffect(() => {
     if (state.phase !== 'resolving_normal') return;
     if (resolvedTurnRef.current === state.turn) return;
     resolvedTurnRef.current = state.turn;
 
-    // Fire cosmetic overlay effects
-    const effects: DiceEffect[] = [];
     const p1Ones = countOnes(state.player1.currentRoll);
     const p2Ones = countOnes(state.player2.currentRoll);
     const p1Sixes = countSixes(state.player1.currentRoll);
     const p2Sixes = countSixes(state.player2.currentRoll);
+    const hasGhosts = p1Ones + p2Ones > 0;
+    const hasPush = p1Sixes + p2Sixes > 0;
 
-    if (p1Ones + p2Ones > 0) {
-      effects.push({ id: nextEffectId(), type: 'ghost', count: p1Ones + p2Ones });
-    }
-    if (p1Sixes > 0) {
-      effects.push({ id: nextEffectId(), type: 'push_up', count: p1Sixes });
-    }
-    if (p2Sixes > 0) {
-      effects.push({ id: nextEffectId(), type: 'push_down', count: p2Sixes });
-    }
-
-    // Show highlights on dice — persist them so hidden dice stay hidden
+    // Show highlights immediately (hides original 1s and 6s via opacity-0)
     setShowEffects(true);
     setPersistHighlights(true);
-    if (effects.length > 0) {
-      setDiceEffects(effects);
+
+    const timers: ReturnType<typeof setTimeout>[] = [];
+
+    // Phase 1: ghost animations for 1s (slide toward center and fade)
+    if (hasGhosts) {
+      const ghostEffects: DiceEffect[] = [];
+      if (p1Ones > 0) ghostEffects.push({ id: nextEffectId(), type: 'ghost_p1', count: p1Ones });
+      if (p2Ones > 0) ghostEffects.push({ id: nextEffectId(), type: 'ghost_p2', count: p2Ones });
+      setDiceEffects(ghostEffects);
     }
 
-    // After transfer animation completes (380ms), resolve game logic
-    // Keep highlights persistent (cleared on next roll), only clear overlay effects
-    const hasPush = p1Sixes > 0 || p2Sixes > 0;
-    const delay = hasPush ? 400 : 300;
-    const t = setTimeout(() => {
+    // Phase 2: transfer animations for 6s (fly to opponent area)
+    const pushDelay = hasGhosts ? 300 : 0;
+    if (hasPush) {
+      timers.push(setTimeout(() => {
+        const pushEffects: DiceEffect[] = [];
+        if (p1Sixes > 0) pushEffects.push({ id: nextEffectId(), type: 'push_up', count: p1Sixes });
+        if (p2Sixes > 0) pushEffects.push({ id: nextEffectId(), type: 'push_down', count: p2Sixes });
+        setDiceEffects(pushEffects);
+      }, pushDelay));
+    }
+
+    // Phase 3: clear effects and resolve state
+    const resolveDelay = pushDelay + (hasPush ? 320 : (hasGhosts ? 0 : 0));
+    const totalDelay = Math.max(resolveDelay, hasGhosts && !hasPush ? 300 : 0);
+    timers.push(setTimeout(() => {
       setDiceEffects([]);
       resolveNormal();
-    }, delay);
+    }, totalDelay || 50));
 
-    return () => clearTimeout(t);
+    return () => timers.forEach(t => clearTimeout(t));
   }, [state.phase, state.turn, state.player1.currentRoll, state.player2.currentRoll, resolveNormal]);
 
-  // Safety fallback: if stuck in resolving_normal for >500ms, force resolve
+  // Safety fallback: if stuck in resolving_normal for >700ms, force resolve
   useEffect(() => {
     if (state.phase !== 'resolving_normal') return;
     const fallback = setTimeout(() => {
       setDiceEffects([]);
       resolveNormal();
-    }, 500);
+    }, 700);
     return () => clearTimeout(fallback);
   }, [state.phase, resolveNormal]);
 
