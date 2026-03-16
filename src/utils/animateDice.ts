@@ -1,25 +1,38 @@
 /**
- * Direct DOM animation for dice.
- * Outgoing animations (1s remove, 6s transfer-out) use inline styles
- * to avoid React state/render timing issues.
- * Incoming animations use React state + CSS classes (see DiceDisplay).
+ * Dice animation using the Web Animations API (WAAPI).
+ *
+ * Previous approach set inline CSS transition + transform + opacity in the same
+ * microtask, which caused browsers to batch the style changes and skip the
+ * transition entirely — the dice just vanished instantly instead of animating.
+ *
+ * WAAPI avoids this problem because el.animate() always runs from the explicit
+ * start keyframe to the end keyframe, regardless of the current computed style.
+ * fill:'forwards' keeps the final state (opacity:0) applied until the animation
+ * is explicitly canceled, so no visibility:hidden hack is needed either.
  */
 
 export function waitMs(ms: number): Promise<void> {
   return new Promise(r => setTimeout(r, ms));
 }
 
-/** Fade a die out in place (for 1s — ghost/remove) */
+/** Shrink and fade a die out in place (for 1s — ghost/remove) */
 export async function animateDiceRemove(diceId: string): Promise<void> {
   const el = document.querySelector(`[data-dice-id="${diceId}"]`) as HTMLElement | null;
   if (!el) return;
-  el.style.transition = 'all 300ms ease-out';
-  el.style.transform = 'scale(0) translateY(-30px)';
-  el.style.opacity = '0';
-  await waitMs(300);
-  // Lock hidden — prevent flash when React re-renders
-  el.style.transition = 'none';
-  el.style.visibility = 'hidden';
+
+  const anim = el.animate(
+    [
+      { transform: 'scale(1) translateY(0)', opacity: 1 },
+      { transform: 'scale(0) translateY(-30px)', opacity: 0 },
+    ],
+    { duration: 300, easing: 'ease-out', fill: 'forwards' },
+  );
+
+  try {
+    await anim.finished;
+  } catch {
+    // Animation was canceled (e.g. element removed) — that's fine
+  }
 }
 
 /**
@@ -35,22 +48,25 @@ export async function animateDiceTransferOut(
   if (!el) return;
 
   const dy = direction === 'up' ? -60 : 60;
-  el.style.transition = 'all 400ms ease-in';
-  el.style.transform = `translateY(${dy}px)`;
-  el.style.opacity = '0';
-  await waitMs(400);
-  // Lock hidden — prevent flash when React re-renders
-  el.style.transition = 'none';
-  el.style.visibility = 'hidden';
+
+  const anim = el.animate(
+    [
+      { transform: 'translateY(0)', opacity: 1 },
+      { transform: `translateY(${dy}px)`, opacity: 0 },
+    ],
+    { duration: 400, easing: 'ease-in', fill: 'forwards' },
+  );
+
+  try {
+    await anim.finished;
+  } catch {
+    // Animation was canceled (e.g. element removed) — that's fine
+  }
 }
 
-/** Reset all inline styles set by DOM animations */
+/** Cancel all WAAPI animations on dice elements, restoring their original state */
 export function resetDiceStyles(): void {
   document.querySelectorAll('[data-dice-id]').forEach(el => {
-    const htmlEl = el as HTMLElement;
-    htmlEl.style.transition = '';
-    htmlEl.style.transform = '';
-    htmlEl.style.opacity = '';
-    htmlEl.style.visibility = '';
+    el.getAnimations().forEach(a => a.cancel());
   });
 }
