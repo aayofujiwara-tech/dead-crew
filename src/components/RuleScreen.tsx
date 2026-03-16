@@ -4,16 +4,16 @@ interface RuleScreenProps {
 
 export default function RuleScreen({ onBack }: RuleScreenProps) {
   return (
-    <div className="min-h-[100dvh] bg-navy-900 text-cream flex flex-col relative overflow-hidden">
+    <div className="min-h-screen bg-navy-900 text-cream flex flex-col relative overflow-y-auto [-webkit-overflow-scrolling:touch]">
       {/* Background */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-[10%] right-[8%] text-4xl opacity-10 animate-float">👻</div>
         <div className="absolute top-[40%] left-[5%] text-3xl opacity-10 animate-float" style={{ animationDelay: '1.2s' }}>💀</div>
         <div className="absolute bottom-[15%] right-[12%] text-3xl opacity-10 animate-float" style={{ animationDelay: '0.6s' }}>⚓</div>
       </div>
 
       {/* Scrollable content */}
-      <div className="relative z-10 flex-1 overflow-y-auto px-5 py-8 max-w-lg mx-auto w-full scrollbar-thin">
+      <div className="relative z-10 flex-1 px-5 py-8 max-w-lg mx-auto w-full">
         <h1 className="font-pirate text-3xl text-ghost-orange mb-1 text-center">デッドクルー</h1>
         <p className="font-pirate text-lg text-teal-400 mb-8 text-center">2人用ルール</p>
 
