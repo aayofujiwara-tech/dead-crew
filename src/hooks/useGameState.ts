@@ -298,7 +298,10 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         return { ...s, player2: p2, phase: 'round_end', winner: 2, animationPhase: 'victory', p1Rolled: false, p2Rolled: false };
       }
 
-      return { ...s, phase: 'waiting', animationPhase: 'idle', p1Rolled: false, p2Rolled: false };
+      // Clear currentRoll so stale dice don't display — diceCount is the source of truth
+      const p1Cleared = { ...s.player1, currentRoll: [] as DieValue[] };
+      const p2Cleared = { ...s.player2, currentRoll: [] as DieValue[] };
+      return { ...s, player1: p1Cleared, player2: p2Cleared, phase: 'waiting', animationPhase: 'idle', p1Rolled: false, p2Rolled: false };
     }
 
     case 'NEXT_ROUND': {

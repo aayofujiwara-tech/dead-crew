@@ -141,14 +141,18 @@ export default function DiceDisplay({
   dice, diceCount, rollingMask, highlights, inverted, diceIdPrefix,
   unrevealed, incomingCount = 0, incomingAnimClass,
 }: DiceDisplayProps) {
+  // Always cap displayed dice to diceCount to prevent stale currentRoll
+  // from showing more dice than the player actually has
+  const visibleDice = dice.slice(0, diceCount);
+
   return (
     <div className={`flex flex-wrap gap-2 justify-center relative ${inverted ? 'rotate-180' : ''}`}>
       {unrevealed
         ? Array.from({ length: diceCount }, (_, i) => (
             <UnrevealedDie key={i} />
           ))
-        : dice.length > 0
-          ? dice.map((value, i) => (
+        : visibleDice.length > 0
+          ? visibleDice.map((value, i) => (
               <DieFace
                 key={i}
                 value={value}
