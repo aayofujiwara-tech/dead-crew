@@ -15,7 +15,6 @@ import {
   animateDiceRemove,
   animateDiceTransferOut,
   resetDiceStyles,
-  waitMs,
   waitForHighlightPaint,
 } from './utils/animateDice';
 
@@ -111,21 +110,20 @@ function App() {
           await Promise.all(transferPromises);
         }
 
-        // Step 3: Update state (diceCount changes)
-        resolveNormal();
-
-        // Step 4: Show incoming dice with slide-in animation
-        // P1's 6s → incoming to P2's area (slide in from bottom, since P1 is below)
-        // P2's 6s → incoming to P1's area (slide in from top, since P2 is above)
+        // Step 3: Show incoming dice BEFORE resolving state, so the
+        // slide-in animation starts while the transfer-out dice is still
+        // fading. This makes the visual flow feel continuous.
         if (p1SixCount > 0) setP2Incoming(p1SixCount);
         if (p2SixCount > 0) setP1Incoming(p2SixCount);
 
-        // Step 5: Wait for incoming animation to complete, then clear
-        if (hasSixes) {
-          await waitMs(350);
-          setP1Incoming(0);
-          setP2Incoming(0);
-        }
+        // Step 4: Update state (diceCount changes, phase → waiting)
+        resolveNormal();
+
+        // Incoming dice stay visible until the user clicks 振る.
+        // handleRoll already calls setP1Incoming(0) / setP2Incoming(0),
+        // so no auto-clear timer is needed. Removing the old 350ms timer
+        // fixes the bug where incoming dice vanished almost immediately
+        // (CSS animation = 300ms, timer = 350ms → only 50ms of visibility).
       } finally {
         animatingRef.current = false;
       }
@@ -156,6 +154,17 @@ function App() {
       resetDiceStyles();
     }
   }, [state.animationPhase]);
+
+  // Clear incoming dice indicators when the round/match ends
+  // (since handleRoll won't be called in those cases)
+  useEffect(() => {
+    if (state.phase === 'round_end' || state.phase === 'match_end') {
+      setP1Incoming(0);
+      setP2Incoming(0);
+      setShowEffects(false);
+      resetDiceStyles();
+    }
+  }, [state.phase]);
 
   // Screen shake on roll
   const handleRoll = useCallback(() => {
