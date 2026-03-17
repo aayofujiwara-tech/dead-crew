@@ -153,18 +153,6 @@ function DieEffect({ die, effect, desc }: { die: string; effect: string; desc: s
   );
 }
 
-function InstantWin({ name, desc, rare }: { name: string; desc: string; rare?: boolean }) {
-  return (
-    <div className={`flex items-start gap-3 rounded-lg px-3 py-2 ${rare ? 'bg-yellow-500/10' : 'bg-navy-800/50'}`}>
-      <span className={`font-pirate text-sm flex-shrink-0 ${rare ? 'text-yellow-400' : 'text-ghost-orange'}`}>▸</span>
-      <div>
-        <span className={`text-sm font-bold ${rare ? 'text-yellow-300' : 'text-cream'}`}>{name}</span>
-        <p className="text-teal-400/70 text-xs">{desc}</p>
-      </div>
-    </div>
-  );
-}
-
 function TripleEffect({ dice, name, desc, note }: { dice: string; name: string; desc: string; note: string }) {
   return (
     <div className="bg-navy-800/50 rounded-lg px-3 py-2">
