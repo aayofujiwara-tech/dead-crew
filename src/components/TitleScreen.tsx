@@ -1,11 +1,16 @@
+import { useState } from 'react';
 import type { GameMode } from '../types/game';
 
 interface TitleScreenProps {
-  onStart: (mode: GameMode) => void;
+  onStart: (mode: GameMode, playerName: string) => void;
   onShowRules: () => void;
 }
 
 export default function TitleScreen({ onStart, onShowRules }: TitleScreenProps) {
+  const [name, setName] = useState('');
+
+  const displayName = name.trim() || 'キャプテン';
+
   return (
     <div className="min-h-[100dvh] bg-navy-900 text-cream flex flex-col items-center justify-center relative overflow-hidden">
       {/* Background wave animation */}
@@ -39,13 +44,37 @@ export default function TitleScreen({ onStart, onShowRules }: TitleScreenProps) 
         <h1 className="font-pirate text-5xl sm:text-6xl text-ghost-orange mb-3 text-center drop-shadow-[0_0_20px_rgba(249,115,22,0.4)]">
           デッドクルー
         </h1>
-        <p className="font-pirate text-xl text-teal-400 mb-10 text-center">
+        <p className="font-pirate text-xl text-teal-400 mb-8 text-center">
           幽霊船員を全て成仏させろ
         </p>
 
+        {/* Name input */}
+        <div className="w-full mb-6">
+          <label className="block font-pirate text-sm text-teal-400 mb-1.5 text-center">
+            船長の名前
+          </label>
+          <input
+            type="text"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            placeholder="キャプテン"
+            maxLength={12}
+            className="
+              w-full px-4 py-2.5 rounded-xl text-center font-pirate text-lg
+              bg-navy-700 text-cream border border-teal-600/50
+              placeholder:text-teal-600/40
+              focus:outline-none focus:border-teal-400 focus:shadow-[0_0_15px_rgba(45,212,191,0.2)]
+              transition-all
+            "
+          />
+          <p className="text-teal-400/50 text-xs text-center mt-1">
+            空欄なら「キャプテン」になるぞ
+          </p>
+        </div>
+
         {/* Start buttons */}
         <button
-          onClick={() => onStart('cpu')}
+          onClick={() => onStart('cpu', displayName)}
           className="
             px-10 py-4 rounded-xl font-pirate text-2xl
             bg-teal-600 text-navy-900
@@ -60,7 +89,7 @@ export default function TitleScreen({ onStart, onShowRules }: TitleScreenProps) 
         </button>
 
         <button
-          onClick={() => onStart('local')}
+          onClick={() => onStart('local', displayName)}
           className="
             px-10 py-3 rounded-xl font-pirate text-xl
             bg-navy-700 text-teal-400 border border-teal-600/50

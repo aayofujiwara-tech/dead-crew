@@ -17,10 +17,10 @@ import {
   applyNormalEffects,
 } from '../utils/effects';
 
-function createInitialPlayer(id: PlayerId): PlayerState {
+function createInitialPlayer(id: PlayerId, name?: string): PlayerState {
   return {
     id,
-    name: id === 1 ? '船長1' : '船長2',
+    name: name ?? (id === 1 ? '船長1' : '船長2'),
     diceCount: 5,
     currentRoll: [],
     matchScore: 0,
@@ -28,15 +28,15 @@ function createInitialPlayer(id: PlayerId): PlayerState {
   };
 }
 
-function createInitialState(mode: GameMode = 'local'): GameState {
+function createInitialState(mode: GameMode = 'local', p1Name?: string, p2Name?: string): GameState {
   resetLogCounter();
   return {
     mode,
     phase: 'waiting',
     turn: 0,
     round: 1,
-    player1: createInitialPlayer(1),
-    player2: createInitialPlayer(2),
+    player1: createInitialPlayer(1, p1Name),
+    player2: createInitialPlayer(2, p2Name),
     removedPool: 0,
     log: [],
     pendingChoices: [],
@@ -336,7 +336,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     }
 
     case 'RESTART_MATCH': {
-      const fresh = createInitialState(action.mode ?? state.mode);
+      const fresh = createInitialState(action.mode ?? state.mode, action.p1Name, action.p2Name);
       return {
         ...fresh,
         log: [createLogEntry('=== 新しいマッチ開始！ ===', 0)],
@@ -389,8 +389,8 @@ export function useGameState() {
     dispatch({ type: 'NEXT_ROUND' });
   }, []);
 
-  const restartMatch = useCallback((mode?: GameMode) => {
-    dispatch({ type: 'RESTART_MATCH', mode });
+  const restartMatch = useCallback((mode?: GameMode, p1Name?: string, p2Name?: string) => {
+    dispatch({ type: 'RESTART_MATCH', mode, p1Name, p2Name });
   }, []);
 
   return {

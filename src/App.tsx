@@ -10,6 +10,7 @@ import DiceEffects, { nextEffectId } from './components/DiceEffects';
 import type { DiceEffect } from './components/DiceEffects';
 import type { DieHighlight, GameMode, PlayerId } from './types/game';
 import { computeDiceHighlights } from './utils/dice';
+import { randomPirateName } from './utils/pirateNames';
 import { cpuController } from './controllers/playerControllers';
 import {
   animateDiceRemove,
@@ -20,6 +21,7 @@ import {
 
 function App() {
   const [screen, setScreen] = useState<'title' | 'rule' | 'game'>('title');
+  const [playerName, setPlayerName] = useState('キャプテン');
   const [showEffects, setShowEffects] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [removedChanged, setRemovedChanged] = useState(false);
@@ -386,8 +388,9 @@ function App() {
     ? computeDiceHighlights(state.player2.currentRoll)
     : undefined;
 
-  const handleStart = useCallback((mode: GameMode) => {
-    restartMatch(mode);
+  const handleStart = useCallback((mode: GameMode, name: string) => {
+    setPlayerName(name);
+    restartMatch(mode, name, randomPirateName());
     setScreen('game');
   }, [restartMatch]);
 
@@ -552,7 +555,7 @@ function App() {
           winner={state.matchWinner}
           isDraw={false}
           winnerName={state.matchWinner ? getPlayerName(state.matchWinner) : ''}
-          onNext={() => restartMatch()}
+          onNext={() => restartMatch(undefined, playerName, randomPirateName())}
           onGoToTitle={handleGoToTitle}
           isInstantWin={isInstantWin}
           instantWinCondition={state.instantWinCondition}

@@ -93,7 +93,7 @@ export type GameAction =
   | { type: 'RESOLVE_NORMAL_EFFECTS' }
   | { type: 'CHECK_ROUND_END' }
   | { type: 'NEXT_ROUND' }
-  | { type: 'RESTART_MATCH'; mode?: GameMode }
+  | { type: 'RESTART_MATCH'; mode?: GameMode; p1Name?: string; p2Name?: string }
   | { type: 'SET_ANIMATION'; phase: GameState['animationPhase'] };
 
 /** Abstraction for player input (human, CPU, or future remote player) */
