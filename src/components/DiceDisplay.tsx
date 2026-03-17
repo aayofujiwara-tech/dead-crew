@@ -93,7 +93,7 @@ export default function DiceDisplay({
   incomingCount = 0, incomingAnimClass,
 }: DiceDisplayProps) {
   return (
-    <div className={`flex flex-wrap gap-2 justify-center ${inverted ? 'rotate-180' : ''}`}>
+    <div className={`flex flex-wrap gap-2 justify-center relative ${inverted ? 'rotate-180' : ''}`}>
       {dice.length > 0
         ? dice.map((value, i) => (
             <DieFace

@@ -57,7 +57,7 @@ export default function PlayerArea({
         </span>
       </div>
 
-      <div className="min-h-[60px] flex items-center">
+      <div className="h-[60px] flex items-center">
         <DiceDisplay
           dice={player.currentRoll}
           diceCount={player.diceCount}
