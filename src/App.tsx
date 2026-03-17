@@ -20,8 +20,8 @@ import {
 
 function App() {
   const [screen, setScreen] = useState<'title' | 'rule' | 'game'>('title');
-  const [shaking, setShaking] = useState(false);
   const [showEffects, setShowEffects] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [removedChanged, setRemovedChanged] = useState(false);
   const [diceEffects, setDiceEffects] = useState<DiceEffect[]>([]);
   // Incoming dice counts for slide-in animation
@@ -73,19 +73,23 @@ function App() {
     if (player === 1 && state.p1Rolled) return;
     if (player === 2 && state.p2Rolled) return;
 
-    // First roll of the turn — clear stale styles from previous turn
+    // First roll of the turn — clear stale state from previous turn
     const isFirstRoll = !state.p1Rolled && !state.p2Rolled;
     if (isFirstRoll) {
-      resetDiceStyles();
       setShowEffects(false);
       setP1Incoming(0);
       setP2Incoming(0);
       advancedRef.current = false;
     }
 
-    // Screen shake
-    setShaking(true);
-    setTimeout(() => setShaking(false), 150);
+    // Screen shake via direct DOM class toggle — avoids re-rendering entire tree
+    const el = containerRef.current;
+    if (el) {
+      el.classList.remove('animate-screen-shake');
+      // Force reflow so removing + re-adding the class restarts the animation
+      void el.offsetWidth;
+      el.classList.add('animate-screen-shake');
+    }
 
     // Dispatch roll — generates dice values in state
     rollPlayer(player);
@@ -193,6 +197,7 @@ function App() {
     // No special dice — resolve immediately
     if (!hasOnes && !hasSixes) {
       animatingRef.current = false;
+      resetDiceStyles();
       resolveNormal();
       setP1RollingDice([]);
       setP2RollingDice([]);
@@ -234,9 +239,10 @@ function App() {
         // Step 4: Update state (diceCount changes, phase → waiting)
         resolveNormal();
 
-        // Step 5: Clean up animation state — diceCount now includes transferred
-        // dice, so incoming indicators would double-count. Rolling masks are also
-        // stale from the previous roll.
+        // Step 5: Clean up — remove WAAPI placeholders and inline styles before
+        // React re-renders with new dice. Also clear incoming/rolling state so
+        // stale indicators don't persist into the next waiting phase.
+        resetDiceStyles();
         setP1Incoming(0);
         setP2Incoming(0);
         setP1RollingDice([]);
@@ -408,7 +414,7 @@ function App() {
   const p2Unrevealed = state.phase === 'waiting' && !state.p2Rolled;
 
   return (
-    <div className={`min-h-[100dvh] bg-navy-900 text-cream flex flex-col overflow-hidden relative ${shaking ? 'animate-screen-shake' : ''}`}>
+    <div ref={containerRef} className="min-h-[100dvh] bg-navy-900 text-cream flex flex-col overflow-hidden relative">
       {/* Background decorations */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-10 left-5 text-4xl opacity-10 animate-float">👻</div>
@@ -545,7 +551,7 @@ function App() {
           winner={state.matchWinner}
           isDraw={false}
           winnerName={state.matchWinner ? getPlayerName(state.matchWinner) : ''}
-          onNext={restartMatch}
+          onNext={() => restartMatch()}
           onGoToTitle={handleGoToTitle}
           isInstantWin={isInstantWin}
           instantWinCondition={state.instantWinCondition}
