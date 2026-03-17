@@ -46,14 +46,14 @@ function GoldDieFace({ value }: { value: DieValue }) {
   return (
     <div
       className="
-        w-14 h-14 sm:w-16 sm:h-16 rounded-lg shadow-lg
+        w-10 h-10 sm:w-14 sm:h-14 rounded-lg shadow-lg
         flex items-center justify-center
         border-2 border-yellow-500
         bg-yellow-200
         animate-dice-gold-pulse
       "
     >
-      <svg viewBox="0 0 100 100" className="w-11 h-11 sm:w-12 sm:h-12">
+      <svg viewBox="0 0 100 100" className="w-8 h-8 sm:w-11 sm:h-11">
         {dots.map(([cx, cy], i) => (
           <circle key={i} cx={cx} cy={cy} r={10} fill="#0a0e1a" />
         ))}

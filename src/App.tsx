@@ -444,12 +444,12 @@ function App() {
       </div>
 
       {/* Center area */}
-      <div className="flex-shrink-0 py-3 px-4 space-y-3 bg-navy-800/50 border-y border-teal-600/20">
-        <div className="flex items-center justify-between text-sm">
+      <div className="flex-shrink-0 py-1.5 sm:py-2 px-3 sm:px-4 space-y-1 sm:space-y-1.5 bg-navy-800/50 border-y border-teal-600/20">
+        <div className="flex items-center justify-between text-xs sm:text-sm">
           <span className="text-teal-400">
             ラウンド <strong className="text-cream">{state.round}</strong>
           </span>
-          <span className="font-pirate text-lg text-ghost-orange">
+          <span className="font-pirate text-base sm:text-lg text-ghost-orange">
             デッドクルー
           </span>
           <span className="text-teal-400">
@@ -467,16 +467,16 @@ function App() {
         />
 
         {/* Center action area — priority dice / CPU choosing only */}
-        <div className="flex justify-center h-[40px] items-center">
+        <div className="flex justify-center h-[32px] sm:h-[36px] items-center">
           {isCpuTurn ? (
-            <div className="px-6 py-2 rounded-lg font-pirate text-lg text-ghost-orange animate-pulse">
+            <div className="px-4 py-1 rounded-lg font-pirate text-base sm:text-lg text-ghost-orange animate-pulse">
               CPUが選択中...
             </div>
           ) : state.phase === 'resolving_priority' && !specialAnnouncement ? (
             <button
               onClick={rollPriority}
               className="
-                px-6 py-2 rounded-lg font-pirate text-lg
+                px-4 py-1 sm:px-6 sm:py-1.5 rounded-lg font-pirate text-base sm:text-lg
                 bg-ghost-orange text-navy-900
                 hover:bg-orange-400 transition-all duration-75
               "

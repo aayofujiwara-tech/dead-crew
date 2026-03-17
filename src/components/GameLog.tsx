@@ -50,9 +50,9 @@ export default function GameLog({
       </div>
 
       {/* 2-column body */}
-      <div className="flex h-[72px]">
+      <div className="flex h-[56px] sm:h-[64px]">
         {/* Left: Player 1 */}
-        <div className="flex-1 px-2 py-1 text-xs leading-relaxed overflow-hidden">
+        <div className="flex-1 px-2 py-0.5 text-[11px] sm:text-xs leading-snug sm:leading-relaxed overflow-hidden">
           {hasRolled ? (
             <>
               <div className="text-teal-400/80 truncate">
@@ -63,7 +63,7 @@ export default function GameLog({
               ))}
             </>
           ) : (
-            <div className="text-teal-600/40 pt-2 text-center">{player1Name}</div>
+            <div className="text-teal-600/40 pt-1.5 text-center">{player1Name}</div>
           )}
         </div>
 
@@ -71,7 +71,7 @@ export default function GameLog({
         <div className="w-px bg-teal-600/20 self-stretch" />
 
         {/* Right: Player 2 */}
-        <div className="flex-1 px-2 py-1 text-xs leading-relaxed overflow-hidden">
+        <div className="flex-1 px-2 py-0.5 text-[11px] sm:text-xs leading-snug sm:leading-relaxed overflow-hidden">
           {hasRolled ? (
             <>
               <div className="text-teal-400/80 truncate">
@@ -82,7 +82,7 @@ export default function GameLog({
               ))}
             </>
           ) : (
-            <div className="text-teal-600/40 pt-2 text-center">{player2Name}</div>
+            <div className="text-teal-600/40 pt-1.5 text-center">{player2Name}</div>
           )}
         </div>
       </div>

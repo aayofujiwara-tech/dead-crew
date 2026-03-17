@@ -94,7 +94,7 @@ function DieFace({ value, isRolling, highlight, diceId, extraClass }: {
     <div className={`relative ${extraClass ?? ''}`} data-dice-id={diceId}>
       <div
         className={`
-          w-12 h-12 sm:w-14 sm:h-14 rounded-lg shadow-lg
+          w-10 h-10 sm:w-12 sm:h-12 rounded-lg shadow-lg
           flex items-center justify-center relative
           border-2
           ${isRolling ? 'bg-cream border-navy-600' : `${style.bg} ${style.border}`}
@@ -105,7 +105,7 @@ function DieFace({ value, isRolling, highlight, diceId, extraClass }: {
           transition: 'transform 150ms ease-out',
         }}
       >
-        <svg viewBox="0 0 100 100" className="w-10 h-10 sm:w-11 sm:h-11">
+        <svg viewBox="0 0 100 100" className="w-8 h-8 sm:w-10 sm:h-10">
           {dots.map(([cx, cy], i) => (
             <circle
               key={i}
@@ -123,16 +123,16 @@ function DieFace({ value, isRolling, highlight, diceId, extraClass }: {
 
 function UnrevealedDie() {
   return (
-    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg border-2 border-navy-500 bg-navy-700 flex items-center justify-center shadow-lg">
-      <span className="text-teal-600/50 text-lg font-bold">?</span>
+    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg border-2 border-navy-500 bg-navy-700 flex items-center justify-center shadow-lg">
+      <span className="text-teal-600/50 text-base sm:text-lg font-bold">?</span>
     </div>
   );
 }
 
 function EmptyDie() {
   return (
-    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg border-2 border-dashed border-teal-600/30 flex items-center justify-center">
-      <span className="text-teal-600/30 text-lg">?</span>
+    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg border-2 border-dashed border-teal-600/30 flex items-center justify-center">
+      <span className="text-teal-600/30 text-base sm:text-lg">?</span>
     </div>
   );
 }
