@@ -31,6 +31,13 @@ export function isFullHouse(dice: DieValue[]): boolean {
   return values.length === 2 && values[0] === 2 && values[1] === 3;
 }
 
+export function isDoubleTriple(dice: DieValue[]): boolean {
+  if (dice.length !== 6) return false;
+  const counts = countValues(dice);
+  const values = Array.from(counts.values()).sort();
+  return values.length === 2 && values[0] === 3 && values[1] === 3;
+}
+
 export function checkInstantWin(dice: DieValue[], diceCount: number): boolean {
   return getInstantWinCondition(dice, diceCount) !== null;
 }
@@ -40,6 +47,7 @@ export function getInstantWinCondition(dice: DieValue[], diceCount: number): str
   if (hasNOfAKind(dice, 5)) return '5個ぞろ目';
   if ((diceCount === 5 || diceCount === 4) && hasNOfAKind(dice, 4)) return '4個ぞろ目';
   if (diceCount === 5 && isFullHouse(dice)) return 'フルハウス';
+  if (diceCount === 6 && isDoubleTriple(dice)) return 'ダブルトリプル';
   return null;
 }
 
