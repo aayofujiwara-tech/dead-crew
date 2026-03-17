@@ -73,9 +73,10 @@ export default function RuleScreen({ onBack }: RuleScreenProps) {
         <Section title="即勝利条件">
           <p className="text-teal-400/70 text-xs mb-3">通常の処理より先にチェックされる</p>
           <div className="space-y-2">
-            <Rule text="5個ぞろ目 ― 全て同じ目" />
-            <Rule text="4個ぞろ目 ― 4個が同じ目（手持ち4〜5個のとき）" />
-            <Rule text="フルハウス ― 3個ぞろ目＋2個ぞろ目（手持ち5個のとき）" />
+            <Rule text="5個ぞろ目 ― 5個以上が同じ目" />
+            <Rule text="4個ぞろ目 ― 4個が同じ目" />
+            <Rule text="ダブルトリプル ― 2種類の目が3個ずつ" />
+            <Rule text="フルハウス ― 3個ぞろ目＋2個ぞろ目" />
           </div>
         </Section>
 
