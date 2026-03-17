@@ -91,13 +91,10 @@ export default function RuleScreen({ onBack }: RuleScreenProps) {
               <span className="text-[10px] font-bold text-yellow-400 border border-yellow-500/50 rounded-full px-2 py-0.5">マッチ即勝利</span>
             </div>
             <div className="space-y-2">
-              <InstantWin name="5個ぞろ目" desc="手持ち5個で全て同じ目" rare />
-              <InstantWin name="6個ぞろ目" desc="手持ち6個で全て同じ目" rare />
+              <InstantWin name="5個以上のぞろ目" desc="手持ちダイス5個以上が全て同じ目" rare />
               <InstantWin name="ダブルトリプル" desc="2種類の目が3個ずつ（手持ち6個のとき）" rare />
             </div>
           </div>
-
-          <p className="text-teal-400/60 text-xs mt-3">※ 5個ぞろ目は手持ち6個以上で5個が同じ目でも発動（1勝）</p>
         </Section>
 
         {/* 選択式効果の処理ルール */}
