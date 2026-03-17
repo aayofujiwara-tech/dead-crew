@@ -414,7 +414,7 @@ function App() {
   const p2Unrevealed = state.phase === 'waiting' && !state.p2Rolled;
 
   return (
-    <div ref={containerRef} className="min-h-[100dvh] bg-navy-900 text-cream flex flex-col overflow-hidden relative">
+    <div ref={containerRef} className="h-[100dvh] bg-navy-900 text-cream flex flex-col overflow-hidden relative">
       {/* Background decorations */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-10 left-5 text-4xl opacity-10 animate-float">👻</div>

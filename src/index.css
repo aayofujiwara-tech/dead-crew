@@ -11,7 +11,8 @@
 }
 
 html, body, #root {
-  min-height: 100dvh;
+  height: 100%;
+  overflow: hidden;
 }
 
 body {
