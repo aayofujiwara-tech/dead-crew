@@ -116,6 +116,7 @@ export function applyChoice(
     }
     case 'five_choice': {
       if (choice === 'remove2') {
+        // Clamp to available dice — special effects run before normal 1s/6s processing
         const toRemove = Math.min(2, playerState.diceCount);
         playerState.diceCount -= toRemove;
         newState.removedPool += toRemove;
@@ -177,6 +178,11 @@ export function applyNormalEffects(state: GameState): { state: GameState; logMes
     p1.diceCount += p2Sixes;
     logs.push(`${p2.name}：6が出た → ${p1.name}に${p2Sixes}個渡す`);
   }
+
+  // Clamp diceCount to 0 minimum — special effects (e.g. 5×3 remove2) may have
+  // already reduced diceCount before normal effects subtract 1s/6s from the original roll
+  p1.diceCount = Math.max(0, p1.diceCount);
+  p2.diceCount = Math.max(0, p2.diceCount);
 
   return {
     state: { ...state, player1: p1, player2: p2, removedPool },
