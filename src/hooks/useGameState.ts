@@ -49,6 +49,7 @@ function createInitialState(mode: GameMode = 'local'): GameState {
     instantWinCondition: null,
     instantWinDice: [],
     instantWinPlayer: null,
+    isRareWin: false,
     p1Rolled: false,
     p2Rolled: false,
   };
@@ -78,6 +79,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         instantWinCondition: null,
         instantWinDice: [],
         instantWinPlayer: null,
+        isRareWin: false,
         log: [
           ...state.log,
           createLogEntry(`--- ターン ${newTurn} ---`, newTurn),
@@ -105,6 +107,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         instantWinCondition: isFirstRoll ? null : state.instantWinCondition,
         instantWinDice: isFirstRoll ? [] : state.instantWinDice,
         instantWinPlayer: isFirstRoll ? null : state.instantWinPlayer,
+        isRareWin: isFirstRoll ? false : state.isRareWin,
         log: isFirstRoll
           ? [...state.log, createLogEntry(`--- ターン ${newTurn} ---`, newTurn)]
           : state.log,
@@ -130,16 +133,18 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         return { ...s, phase: 'round_end', isDraw: true, animationPhase: 'victory' };
       }
       if (p1Cond) {
-        let s = addLogs(state, [`${state.player1.name}：${p1Cond}達成 → 即勝利！`]);
-        const newScore = state.player1.matchScore + 1;
+        const rareLabel = p1Cond.isRare ? ' (レア！2勝分！)' : '';
+        let s = addLogs(state, [`${state.player1.name}：${p1Cond.name}達成 → 即勝利！${rareLabel}`]);
+        const newScore = state.player1.matchScore + p1Cond.points;
         const p1 = { ...state.player1, matchScore: newScore };
         const base = {
           ...s,
           player1: p1,
           animationPhase: 'victory' as const,
-          instantWinCondition: p1Cond,
+          instantWinCondition: p1Cond.name,
           instantWinDice: state.player1.currentRoll,
           instantWinPlayer: 1 as PlayerId,
+          isRareWin: p1Cond.isRare,
         };
         if (newScore >= 2) {
           return { ...base, phase: 'match_end', matchWinner: 1 };
@@ -147,16 +152,18 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         return { ...base, phase: 'round_end', winner: 1 };
       }
       if (p2Cond) {
-        let s = addLogs(state, [`${state.player2.name}：${p2Cond}達成 → 即勝利！`]);
-        const newScore = state.player2.matchScore + 1;
+        const rareLabel = p2Cond.isRare ? ' (レア！2勝分！)' : '';
+        let s = addLogs(state, [`${state.player2.name}：${p2Cond.name}達成 → 即勝利！${rareLabel}`]);
+        const newScore = state.player2.matchScore + p2Cond.points;
         const p2 = { ...state.player2, matchScore: newScore };
         const base = {
           ...s,
           player2: p2,
           animationPhase: 'victory' as const,
-          instantWinCondition: p2Cond,
+          instantWinCondition: p2Cond.name,
           instantWinDice: state.player2.currentRoll,
           instantWinPlayer: 2 as PlayerId,
+          isRareWin: p2Cond.isRare,
         };
         if (newScore >= 2) {
           return { ...base, phase: 'match_end', matchWinner: 2 };
@@ -321,6 +328,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         instantWinCondition: null,
         instantWinDice: [],
         instantWinPlayer: null,
+        isRareWin: false,
         p1Rolled: false,
         p2Rolled: false,
         log: [...state.log, createLogEntry(`=== ラウンド ${state.round + 1} 開始 ===`, state.turn)],

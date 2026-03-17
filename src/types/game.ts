@@ -75,6 +75,7 @@ export interface GameState {
   instantWinCondition: string | null;
   instantWinDice: DieValue[];
   instantWinPlayer: PlayerId | null;
+  isRareWin: boolean;
   /** Whether each player has pressed their roll button this turn */
   p1Rolled: boolean;
   p2Rolled: boolean;

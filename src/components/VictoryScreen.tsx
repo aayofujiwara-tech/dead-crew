@@ -11,21 +11,25 @@ interface VictoryScreenProps {
   isInstantWin?: boolean;
   instantWinCondition?: string | null;
   instantWinDice?: DieValue[];
+  isRareWin?: boolean;
 }
 
 const CONFETTI_PIECES = ['🎉', '✨', '⭐', '🌟', '💫', '🔥', '👑', '💀'];
+const RARE_CONFETTI_PIECES = ['👑', '💎', '🌟', '✨', '🔥', '⚡', '🏆', '💫'];
 
-function Confetti() {
+function Confetti({ isRare }: { isRare?: boolean }) {
+  const pieces = isRare ? RARE_CONFETTI_PIECES : CONFETTI_PIECES;
+  const count = isRare ? 35 : 20;
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
-      {Array.from({ length: 20 }, (_, i) => {
+      {Array.from({ length: count }, (_, i) => {
         const left = Math.random() * 100;
         const delay = Math.random() * 400;
-        const piece = CONFETTI_PIECES[i % CONFETTI_PIECES.length];
+        const piece = pieces[i % pieces.length];
         return (
           <div
             key={i}
-            className="absolute animate-confetti text-xl"
+            className={`absolute animate-confetti ${isRare ? 'text-2xl' : 'text-xl'}`}
             style={{
               left: `${left}%`,
               top: `${15 + Math.random() * 35}%`,
@@ -72,24 +76,37 @@ export default function VictoryScreen({
   isInstantWin,
   instantWinCondition,
   instantWinDice,
+  isRareWin,
 }: VictoryScreenProps) {
+  const borderColor = isRareWin
+    ? 'border-yellow-400'
+    : 'border-ghost-orange';
+  const shadowColor = isRareWin
+    ? 'shadow-[0_0_60px_rgba(234,179,8,0.5)]'
+    : 'shadow-[0_0_50px_rgba(249,115,22,0.3)]';
+
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-      {(isInstantWin || type === 'match') && <Confetti />}
+      {(isInstantWin || type === 'match') && <Confetti isRare={isRareWin} />}
 
       <div className="animate-victory-burst text-center">
-        <div className="bg-navy-700 border-2 border-ghost-orange rounded-2xl p-8 max-w-sm w-full shadow-[0_0_50px_rgba(249,115,22,0.3)]">
+        <div className={`bg-navy-700 border-2 ${borderColor} rounded-2xl p-8 max-w-sm w-full ${shadowColor}`}>
           {/* Instant win: show condition name + winning dice */}
           {isInstantWin && instantWinCondition && (
             <>
               <div className="animate-instant-win-text font-pirate text-2xl text-ghost-orange mb-2 drop-shadow-[0_0_15px_rgba(249,115,22,0.6)]">
                 即勝利！
               </div>
-              <div className="font-pirate text-xl text-yellow-400 mb-3">
+              <div className="font-pirate text-xl text-yellow-400 mb-1">
                 {instantWinCondition}達成！
               </div>
+              {isRareWin && (
+                <div className="font-pirate text-base text-yellow-300 mb-3 animate-pulse drop-shadow-[0_0_10px_rgba(234,179,8,0.6)]">
+                  レア勝利！マッチ即制覇！
+                </div>
+              )}
               {instantWinDice && instantWinDice.length > 0 && (
-                <div className="flex gap-2 justify-center mb-4">
+                <div className="flex gap-2 justify-center mb-4 flex-wrap">
                   {instantWinDice.map((v, i) => (
                     <GoldDieFace key={i} value={v} />
                   ))}
@@ -107,9 +124,13 @@ export default function VictoryScreen({
           ) : type === 'match' ? (
             <>
               {!isInstantWin && <div className="text-5xl mb-4">👑🏴‍☠️</div>}
-              <h2 className="font-pirate text-3xl text-ghost-orange mb-2">マッチ勝利！</h2>
+              <h2 className={`font-pirate text-3xl mb-2 ${isRareWin ? 'text-yellow-400' : 'text-ghost-orange'}`}>
+                マッチ勝利！
+              </h2>
               <p className="text-cream text-xl mb-2">{winnerName}</p>
-              <p className="text-teal-400 mb-6">幽霊船の新たな支配者だ！</p>
+              <p className="text-teal-400 mb-6">
+                {isRareWin ? '伝説の一振りで幽霊船を支配した！' : '幽霊船の新たな支配者だ！'}
+              </p>
             </>
           ) : (
             <>

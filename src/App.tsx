@@ -541,6 +541,7 @@ function App() {
           isInstantWin={isInstantWin}
           instantWinCondition={state.instantWinCondition}
           instantWinDice={state.instantWinDice}
+          isRareWin={state.isRareWin}
         />
       )}
 
@@ -556,6 +557,7 @@ function App() {
           isInstantWin={isInstantWin}
           instantWinCondition={state.instantWinCondition}
           instantWinDice={state.instantWinDice}
+          isRareWin={state.isRareWin}
         />
       )}
     </div>

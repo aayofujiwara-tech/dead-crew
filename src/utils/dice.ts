@@ -36,16 +36,45 @@ export function isDoubleTriple(dice: DieValue[]): boolean {
   return values.length === 2 && values[0] === 3 && values[1] === 3;
 }
 
+export interface InstantWinResult {
+  name: string;
+  points: number;
+  isRare: boolean;
+}
+
 export function checkInstantWin(dice: DieValue[]): boolean {
   return getInstantWinCondition(dice) !== null;
 }
 
-export function getInstantWinCondition(dice: DieValue[]): string | null {
+export function getInstantWinCondition(dice: DieValue[]): InstantWinResult | null {
   if (dice.length === 0) return null;
-  if (hasNOfAKind(dice, 5)) return '5個ぞろ目';
-  if (hasNOfAKind(dice, 4)) return '4個ぞろ目';
-  if (isDoubleTriple(dice)) return 'ダブルトリプル';
-  if (isFullHouse(dice)) return 'フルハウス';
+
+  // 6個ぞろ目: 6 dice all the same (rare, 2 points)
+  if (dice.length === 6 && hasNOfAKind(dice, 6)) {
+    return { name: '6個ぞろ目', points: 2, isRare: true };
+  }
+
+  // 5個ぞろ目: 5+ dice the same (rare when exactly 5 dice)
+  if (hasNOfAKind(dice, 5)) {
+    const rare = dice.length === 5;
+    return { name: '5個ぞろ目', points: rare ? 2 : 1, isRare: rare };
+  }
+
+  // 4個ぞろ目
+  if (hasNOfAKind(dice, 4)) {
+    return { name: '4個ぞろ目', points: 1, isRare: false };
+  }
+
+  // ダブルトリプル: 3+3, implicitly 6 dice (rare, 2 points)
+  if (isDoubleTriple(dice)) {
+    return { name: 'ダブルトリプル', points: 2, isRare: true };
+  }
+
+  // フルハウス: 3+2, implicitly 5 dice
+  if (isFullHouse(dice)) {
+    return { name: 'フルハウス', points: 1, isRare: false };
+  }
+
   return null;
 }
 
