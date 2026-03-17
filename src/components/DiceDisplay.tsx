@@ -46,6 +46,10 @@ const HIGHLIGHT_STYLES: Record<DieHighlight, { bg: string; border: string; anima
   },
 };
 
+function randomDieValue(): DieValue {
+  return (Math.floor(Math.random() * 6) + 1) as DieValue;
+}
+
 function DieFace({ value, isRolling, highlight, diceId, extraClass }: {
   value: DieValue;
   isRolling: boolean;
@@ -53,27 +57,38 @@ function DieFace({ value, isRolling, highlight, diceId, extraClass }: {
   diceId?: string;
   extraClass?: string;
 }) {
-  const dots = dieFacePositions[value];
   const style = HIGHLIGHT_STYLES[highlight];
 
-  // Detect rolling→stopped transition for bounce animation
+  // While rolling: cycle through random die values at ~60fps
+  const [displayValue, setDisplayValue] = useState<DieValue>(value);
+
+  useEffect(() => {
+    if (!isRolling) {
+      setDisplayValue(value);
+      return;
+    }
+    // Start cycling random values
+    const interval = setInterval(() => {
+      setDisplayValue(randomDieValue());
+    }, 50);
+    return () => clearInterval(interval);
+  }, [isRolling, value]);
+
+  // Detect rolling→stopped transition for bounce
   const wasRolling = useRef(isRolling);
   const [bouncing, setBouncing] = useState(false);
 
   useEffect(() => {
     if (wasRolling.current && !isRolling) {
       setBouncing(true);
-      const t = setTimeout(() => setBouncing(false), 200);
+      const t = setTimeout(() => setBouncing(false), 150);
       return () => clearTimeout(t);
     }
     wasRolling.current = isRolling;
   }, [isRolling]);
 
-  const animClass = isRolling
-    ? 'animate-dice-spin'
-    : bouncing
-      ? 'animate-die-bounce'
-      : style.animation;
+  const dots = dieFacePositions[displayValue];
+  const animClass = isRolling ? '' : style.animation;
 
   return (
     <div className={`relative ${extraClass ?? ''}`} data-dice-id={diceId}>
@@ -85,6 +100,10 @@ function DieFace({ value, isRolling, highlight, diceId, extraClass }: {
           ${isRolling ? 'bg-cream border-navy-600' : `${style.bg} ${style.border}`}
           ${animClass}
         `}
+        style={{
+          transform: bouncing ? 'scale(1.15)' : 'scale(1)',
+          transition: 'transform 150ms ease-out',
+        }}
       >
         <svg viewBox="0 0 100 100" className="w-10 h-10 sm:w-11 sm:h-11">
           {dots.map(([cx, cy], i) => (

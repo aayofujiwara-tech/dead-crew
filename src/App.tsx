@@ -30,6 +30,10 @@ function App() {
   const prevRemovedRef = useRef(0);
   const animatingRef = useRef(false);
 
+  // Special effect announcement overlay
+  const [specialAnnouncement, setSpecialAnnouncement] = useState<string | null>(null);
+  const announcementShownTurnRef = useRef<number>(-1);
+
   // Per-die rolling state for staggered stop animation
   const [p1RollingDice, setP1RollingDice] = useState<boolean[]>([]);
   const [p2RollingDice, setP2RollingDice] = useState<boolean[]>([]);
@@ -259,6 +263,37 @@ function App() {
   }, [state.phase]);
 
   // ---------------------------------------------------------------------------
+  // Special effect announcement overlay
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    const isChoicePhase =
+      state.phase === 'resolving_priority' ||
+      state.phase === 'resolving_choice_p1' ||
+      state.phase === 'resolving_choice_p2';
+    if (!isChoicePhase) return;
+    if (announcementShownTurnRef.current === state.turn) return;
+    if (state.pendingChoices.length === 0) return;
+
+    announcementShownTurnRef.current = state.turn;
+
+    const effectLabels: Record<string, string> = {
+      swap_all: '👻 2×3 入れ替え発動！',
+      add_removed_3: '💀 3×3 呪い発動！除外済み3個が相手に！',
+      add_removed_4: '⚓ 4×3 大呪い発動！除外済み4個が相手に！',
+      five_choice: '🏴‍☠️ 5×3 選択発動！',
+    };
+
+    const texts = state.pendingChoices
+      .map(c => effectLabels[c.effect.type])
+      .filter(Boolean);
+    if (texts.length === 0) return;
+
+    setSpecialAnnouncement(texts.join('\n'));
+    const timer = setTimeout(() => setSpecialAnnouncement(null), 1500);
+    return () => clearTimeout(timer);
+  }, [state.phase, state.turn, state.pendingChoices]);
+
+  // ---------------------------------------------------------------------------
   // Choice handling
   // ---------------------------------------------------------------------------
   const handleChoice = useCallback((player: Parameters<typeof makeChoice>[0], choice: Parameters<typeof makeChoice>[1]) => {
@@ -282,7 +317,7 @@ function App() {
 
   const currentChoice = state.pendingChoices[state.currentChoiceIndex];
   const isCpuTurn = isCpuMode && currentChoice?.player === 2;
-  const showingChoice = (state.phase === 'resolving_choice_p1' || state.phase === 'resolving_choice_p2') && currentChoice && !isCpuTurn;
+  const showingChoice = (state.phase === 'resolving_choice_p1' || state.phase === 'resolving_choice_p2') && currentChoice && !isCpuTurn && !specialAnnouncement;
 
   // Auto-resolve CPU choices after a short delay
   useEffect(() => {
@@ -403,7 +438,7 @@ function App() {
             <div className="px-6 py-2 rounded-lg font-pirate text-lg text-ghost-orange animate-pulse">
               CPUが選択中...
             </div>
-          ) : state.phase === 'resolving_priority' ? (
+          ) : state.phase === 'resolving_priority' && !specialAnnouncement ? (
             <button
               onClick={rollPriority}
               className="
@@ -435,6 +470,19 @@ function App() {
           onRoll={() => handlePlayerRoll(1)}
         />
       </div>
+
+      {/* Special effect announcement overlay */}
+      {specialAnnouncement && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/80 pointer-events-auto">
+          <div className="text-center space-y-2 animate-instant-win-text">
+            {specialAnnouncement.split('\n').map((line, i) => (
+              <p key={i} className="text-2xl sm:text-3xl font-pirate text-ghost-orange drop-shadow-[0_0_15px_rgba(249,115,22,0.6)]">
+                {line}
+              </p>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Special choice effect overlay (curse, swap only) */}
       <DiceEffects effects={diceEffects} />
