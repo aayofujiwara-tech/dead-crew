@@ -4,9 +4,9 @@ interface RuleScreenProps {
 
 export default function RuleScreen({ onBack }: RuleScreenProps) {
   return (
-    <div className="min-h-screen bg-navy-900 text-cream flex flex-col relative overflow-y-auto [-webkit-overflow-scrolling:touch]">
+    <div className="fixed inset-0 bg-navy-900 text-cream flex flex-col overflow-y-auto [-webkit-overflow-scrolling:touch]">
       {/* Background */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
         <div className="absolute top-[10%] right-[8%] text-4xl opacity-10 animate-float">👻</div>
         <div className="absolute top-[40%] left-[5%] text-3xl opacity-10 animate-float" style={{ animationDelay: '1.2s' }}>💀</div>
         <div className="absolute bottom-[15%] right-[12%] text-3xl opacity-10 animate-float" style={{ animationDelay: '0.6s' }}>⚓</div>
@@ -72,15 +72,32 @@ export default function RuleScreen({ onBack }: RuleScreenProps) {
         {/* 即勝利条件 */}
         <Section title="即勝利条件">
           <p className="text-teal-400/70 text-xs mb-3">通常の処理より先にチェックされる</p>
-          <div className="space-y-2">
-            <Rule text="6個ぞろ目 ― 手持ち6個で全て同じ目 ★2勝" />
-            <Rule text="5個ぞろ目 ― 手持ち5個で全て同じ目 ★2勝" />
-            <Rule text="5個ぞろ目 ― 手持ち6個以上で5個が同じ目" />
-            <Rule text="4個ぞろ目 ― 4個が同じ目" />
-            <Rule text="ダブルトリプル ― 2種類の目が3個ずつ ★2勝" />
-            <Rule text="フルハウス ― 3個ぞろ目＋2個ぞろ目" />
+
+          {/* 1勝獲得 */}
+          <div className="mb-4">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-xs font-bold text-navy-900 bg-teal-400 rounded-full px-2.5 py-0.5">1勝獲得</span>
+            </div>
+            <div className="space-y-2">
+              <InstantWin name="4個ぞろ目" desc="4個が同じ目" />
+              <InstantWin name="フルハウス" desc="3個ぞろ目＋2個ぞろ目" />
+            </div>
           </div>
-          <p className="text-yellow-400/80 text-xs mt-3">★2勝 ＝ レア勝利！マッチ即制覇（2勝分）</p>
+
+          {/* 2勝獲得 */}
+          <div className="rounded-xl border border-yellow-500/40 bg-yellow-500/5 p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-xs font-bold text-navy-900 bg-yellow-400 rounded-full px-2.5 py-0.5">2勝獲得</span>
+              <span className="text-[10px] font-bold text-yellow-400 border border-yellow-500/50 rounded-full px-2 py-0.5">マッチ即勝利</span>
+            </div>
+            <div className="space-y-2">
+              <InstantWin name="5個ぞろ目" desc="手持ち5個で全て同じ目" rare />
+              <InstantWin name="6個ぞろ目" desc="手持ち6個で全て同じ目" rare />
+              <InstantWin name="ダブルトリプル" desc="2種類の目が3個ずつ（手持ち6個のとき）" rare />
+            </div>
+          </div>
+
+          <p className="text-teal-400/60 text-xs mt-3">※ 5個ぞろ目は手持ち6個以上で5個が同じ目でも発動（1勝）</p>
         </Section>
 
         {/* 選択式効果の処理ルール */}
@@ -134,6 +151,18 @@ function DieEffect({ die, effect, desc }: { die: string; effect: string; desc: s
       <span className="font-pirate text-lg text-ghost-orange flex-shrink-0 w-10 text-center">{die}</span>
       <div>
         <span className="text-cream text-sm font-bold">{effect}</span>
+        <p className="text-teal-400/70 text-xs">{desc}</p>
+      </div>
+    </div>
+  );
+}
+
+function InstantWin({ name, desc, rare }: { name: string; desc: string; rare?: boolean }) {
+  return (
+    <div className={`flex items-start gap-3 rounded-lg px-3 py-2 ${rare ? 'bg-yellow-500/10' : 'bg-navy-800/50'}`}>
+      <span className={`font-pirate text-sm flex-shrink-0 ${rare ? 'text-yellow-400' : 'text-ghost-orange'}`}>▸</span>
+      <div>
+        <span className={`text-sm font-bold ${rare ? 'text-yellow-300' : 'text-cream'}`}>{name}</span>
         <p className="text-teal-400/70 text-xs">{desc}</p>
       </div>
     </div>
