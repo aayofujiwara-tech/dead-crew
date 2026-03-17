@@ -122,8 +122,8 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     }
 
     case 'CHECK_INSTANT_WIN': {
-      const p1Cond = getInstantWinCondition(state.player1.currentRoll, state.player1.diceCount);
-      const p2Cond = getInstantWinCondition(state.player2.currentRoll, state.player2.diceCount);
+      const p1Cond = getInstantWinCondition(state.player1.currentRoll);
+      const p2Cond = getInstantWinCondition(state.player2.currentRoll);
 
       if (p1Cond && p2Cond) {
         let s = addLogs(state, ['両者とも即勝利条件！引き分け！']);
