@@ -96,34 +96,6 @@ export default function RuleScreen({ onBack }: RuleScreenProps) {
           </div>
         </Section>
 
-        {/* 即勝利条件 */}
-        <Section title="即勝利条件">
-          <p className="text-teal-400/70 text-xs mb-3">通常の処理より先にチェックされる</p>
-
-          {/* 1勝獲得 */}
-          <div className="mb-4">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs font-bold text-navy-900 bg-teal-400 rounded-full px-2.5 py-0.5">1勝獲得</span>
-            </div>
-            <div className="space-y-2">
-              <InstantWin name="4個ぞろ目" desc="4個が同じ目" />
-              <InstantWin name="フルハウス" desc="3個ぞろ目＋2個ぞろ目" />
-            </div>
-          </div>
-
-          {/* 2勝獲得 */}
-          <div className="rounded-xl border border-yellow-500/40 bg-yellow-500/5 p-3">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs font-bold text-navy-900 bg-yellow-400 rounded-full px-2.5 py-0.5">2勝獲得</span>
-              <span className="text-[10px] font-bold text-yellow-400 border border-yellow-500/50 rounded-full px-2 py-0.5">マッチ即勝利</span>
-            </div>
-            <div className="space-y-2">
-              <InstantWin name="5個以上のぞろ目" desc="手持ちダイス5個以上が全て同じ目" rare />
-              <InstantWin name="ダブルトリプル" desc="2種類の目が3個ずつ（手持ち6個のとき）" rare />
-            </div>
-          </div>
-        </Section>
-
         {/* 選択式効果の処理ルール */}
         <Section title="選択式効果の処理ルール">
           <div className="space-y-2">
