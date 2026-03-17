@@ -8,7 +8,7 @@ import ChoiceDialog from './components/ChoiceDialog';
 import VictoryScreen from './components/VictoryScreen';
 import DiceEffects, { nextEffectId } from './components/DiceEffects';
 import type { DiceEffect } from './components/DiceEffects';
-import type { DieHighlight, GameMode } from './types/game';
+import type { DieHighlight, GameMode, PlayerId } from './types/game';
 import { computeDiceHighlights } from './utils/dice';
 import { cpuController } from './controllers/playerControllers';
 import {
@@ -30,9 +30,19 @@ function App() {
   const prevRemovedRef = useRef(0);
   const animatingRef = useRef(false);
 
+  // Per-die rolling state for staggered stop animation
+  const [p1RollingDice, setP1RollingDice] = useState<boolean[]>([]);
+  const [p2RollingDice, setP2RollingDice] = useState<boolean[]>([]);
+  const p1StopTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const p2StopTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  // Track whether the "both rolled" advance has fired for this turn
+  const advancedRef = useRef(false);
+
   const {
     state,
-    rollAndProcess,
+    rollPlayer,
+    showResults,
+    checkInstantWin,
     rollPriority,
     makeChoice,
     resolveNormal,
@@ -50,12 +60,116 @@ function App() {
     }
   }, [state.removedPool]);
 
-  // When phase becomes 'resolving_normal':
-  // 1. Animate 1s (fade out via DOM)
-  // 2. Animate 6s (slide out via DOM)
-  // 3. Update state (resolveNormal)
-  // 4. Show incoming dice (React state + CSS animation)
-  // 5. Clear incoming dice
+  // ---------------------------------------------------------------------------
+  // Individual roll handler
+  // ---------------------------------------------------------------------------
+  const handlePlayerRoll = useCallback((player: PlayerId) => {
+    if (state.phase !== 'waiting') return;
+    if (player === 1 && state.p1Rolled) return;
+    if (player === 2 && state.p2Rolled) return;
+
+    // First roll of the turn — clear stale styles from previous turn
+    const isFirstRoll = !state.p1Rolled && !state.p2Rolled;
+    if (isFirstRoll) {
+      resetDiceStyles();
+      setShowEffects(false);
+      setP1Incoming(0);
+      setP2Incoming(0);
+      advancedRef.current = false;
+    }
+
+    // Screen shake
+    setShaking(true);
+    setTimeout(() => setShaking(false), 150);
+
+    // Dispatch roll — generates dice values in state
+    rollPlayer(player);
+
+    // Start staggered dice stop animation
+    const diceCount = player === 1 ? state.player1.diceCount : state.player2.diceCount;
+    const setRollingDice = player === 1 ? setP1RollingDice : setP2RollingDice;
+    const timersRef = player === 1 ? p1StopTimersRef : p2StopTimersRef;
+
+    // All dice start spinning
+    setRollingDice(Array(diceCount).fill(true));
+
+    // Clear any existing timers
+    timersRef.current.forEach(clearTimeout);
+    timersRef.current = [];
+
+    // Generate random stop times (200–600ms), each die stops independently
+    for (let i = 0; i < diceCount; i++) {
+      const delay = 200 + Math.random() * 400;
+      const timer = setTimeout(() => {
+        setRollingDice(prev => {
+          const next = [...prev];
+          next[i] = false;
+          return next;
+        });
+      }, delay);
+      timersRef.current.push(timer);
+    }
+  }, [state.phase, state.p1Rolled, state.p2Rolled, state.player1.diceCount, state.player2.diceCount, rollPlayer]);
+
+  // ---------------------------------------------------------------------------
+  // Detect when both players have rolled AND all dice have stopped
+  // → advance to SHOW_RESULTS → CHECK_INSTANT_WIN
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    if (state.phase !== 'waiting') return;
+    if (!state.p1Rolled || !state.p2Rolled) return;
+    if (advancedRef.current) return;
+
+    const p1AllStopped = p1RollingDice.length > 0 && p1RollingDice.every(r => !r);
+    const p2AllStopped = p2RollingDice.length > 0 && p2RollingDice.every(r => !r);
+
+    if (p1AllStopped && p2AllStopped) {
+      advancedRef.current = true;
+      // Brief pause to let the user see final dice, then advance
+      setTimeout(() => {
+        showResults();
+        setTimeout(() => checkInstantWin(), 500);
+      }, 300);
+    }
+  }, [state.phase, state.p1Rolled, state.p2Rolled, p1RollingDice, p2RollingDice, showResults, checkInstantWin]);
+
+  // ---------------------------------------------------------------------------
+  // CPU auto-roll: after P1 rolls and all P1 dice stop, CPU rolls after 500ms
+  // ---------------------------------------------------------------------------
+  const isCpuMode = state.mode === 'cpu';
+
+  useEffect(() => {
+    if (!isCpuMode) return;
+    if (state.phase !== 'waiting') return;
+    if (!state.p1Rolled || state.p2Rolled) return;
+
+    // Wait for P1 dice to finish stopping
+    const p1AllStopped = p1RollingDice.length > 0 && p1RollingDice.every(r => !r);
+    if (!p1AllStopped) return;
+
+    const timer = setTimeout(() => handlePlayerRoll(2), 500);
+    return () => clearTimeout(timer);
+  }, [isCpuMode, state.phase, state.p1Rolled, state.p2Rolled, p1RollingDice, handlePlayerRoll]);
+
+  // ---------------------------------------------------------------------------
+  // Spacebar shortcut: rolls P1
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        if (state.phase === 'waiting' && !state.p1Rolled) {
+          handlePlayerRoll(1);
+        }
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [state.phase, state.p1Rolled, handlePlayerRoll]);
+
+  // ---------------------------------------------------------------------------
+  // Resolving normal effects (1s and 6s animation)
+  // ---------------------------------------------------------------------------
   useEffect(() => {
     if (state.phase !== 'resolving_normal') return;
     if (animatingRef.current) return;
@@ -80,9 +194,6 @@ function App() {
 
     const run = async () => {
       try {
-        // Wait for React to flush setShowEffects(true) and browser to paint
-        // the highlight colors (orange for 6, gray for 1) BEFORE moving dice.
-        // Without this, highlights and animation start in the same frame.
         await waitForHighlightPaint();
 
         // Step 1: Animate 1s (ghost/remove) — all in parallel
@@ -98,7 +209,6 @@ function App() {
         }
 
         // Step 2: Animate 6s (slide out toward center) — all in parallel
-        // P1 (bottom) slides UP, P2 (top) slides DOWN
         const transferPromises: Promise<void>[] = [];
         p1Roll.forEach((d, i) => {
           if (d === 6) transferPromises.push(animateDiceTransferOut(`p1-dice-${i}`, 'up'));
@@ -110,20 +220,12 @@ function App() {
           await Promise.all(transferPromises);
         }
 
-        // Step 3: Show incoming dice BEFORE resolving state, so the
-        // slide-in animation starts while the transfer-out dice is still
-        // fading. This makes the visual flow feel continuous.
+        // Step 3: Show incoming dice BEFORE resolving state
         if (p1SixCount > 0) setP2Incoming(p1SixCount);
         if (p2SixCount > 0) setP1Incoming(p2SixCount);
 
         // Step 4: Update state (diceCount changes, phase → waiting)
         resolveNormal();
-
-        // Incoming dice stay visible until the user clicks 振る.
-        // handleRoll already calls setP1Incoming(0) / setP2Incoming(0),
-        // so no auto-clear timer is needed. Removing the old 350ms timer
-        // fixes the bug where incoming dice vanished almost immediately
-        // (CSS animation = 300ms, timer = 350ms → only 50ms of visibility).
       } finally {
         animatingRef.current = false;
       }
@@ -144,58 +246,21 @@ function App() {
     return () => clearTimeout(fallback);
   }, [state.phase, state.turn, state.player1.currentRoll, state.player2.currentRoll, resolveNormal]);
 
-  // Reset inline animation styles only AFTER React has re-rendered with new dice.
-  // When ROLL_DICE fires, animationPhase becomes 'rolling' and currentRoll changes
-  // in the same render batch. The useEffect runs after DOM commit, so stale inline
-  // styles (visibility:hidden etc.) are safely cleared on the reused DOM nodes.
-  // The dice-roll CSS animation starts at opacity:0 so no flash occurs.
-  useEffect(() => {
-    if (state.animationPhase === 'rolling') {
-      resetDiceStyles();
-    }
-  }, [state.animationPhase]);
-
   // Clear incoming dice indicators when the round/match ends
-  // (since handleRoll won't be called in those cases)
   useEffect(() => {
     if (state.phase === 'round_end' || state.phase === 'match_end') {
       setP1Incoming(0);
       setP2Incoming(0);
       setShowEffects(false);
       resetDiceStyles();
+      setP1RollingDice([]);
+      setP2RollingDice([]);
     }
   }, [state.phase]);
 
-  // Screen shake on roll
-  const handleRoll = useCallback(() => {
-    if (state.phase === 'waiting') {
-      setShaking(true);
-      setShowEffects(false);
-      setP1Incoming(0);
-      setP2Incoming(0);
-      // NOTE: Do NOT call resetDiceStyles() here — the old dice are still in DOM
-      // with visibility:hidden. Clearing now would flash them for one frame.
-      // Styles are reset in the useEffect above after ROLL_DICE re-renders.
-      setTimeout(() => setShaking(false), 150);
-      rollAndProcess();
-    }
-  }, [state.phase, rollAndProcess]);
-
-  // Spacebar shortcut to roll dice
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.code === 'Space') {
-        e.preventDefault();
-        if (state.phase === 'waiting') {
-          handleRoll();
-        }
-      }
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [state.phase, handleRoll]);
-
-  // Spawn effects for special choices (swap, curse)
+  // ---------------------------------------------------------------------------
+  // Choice handling
+  // ---------------------------------------------------------------------------
   const handleChoice = useCallback((player: Parameters<typeof makeChoice>[0], choice: Parameters<typeof makeChoice>[1]) => {
     const currentPending = state.pendingChoices[state.currentChoiceIndex];
     if (currentPending) {
@@ -216,7 +281,6 @@ function App() {
   }, [makeChoice, state.pendingChoices, state.currentChoiceIndex, state.removedPool]);
 
   const currentChoice = state.pendingChoices[state.currentChoiceIndex];
-  const isCpuMode = state.mode === 'cpu';
   const isCpuTurn = isCpuMode && currentChoice?.player === 2;
   const showingChoice = (state.phase === 'resolving_choice_p1' || state.phase === 'resolving_choice_p2') && currentChoice && !isCpuTurn;
 
@@ -235,6 +299,9 @@ function App() {
     return () => clearTimeout(timer);
   }, [state.phase, state.currentChoiceIndex, isCpuTurn, currentChoice, state, handleChoice]);
 
+  // ---------------------------------------------------------------------------
+  // Rendering helpers
+  // ---------------------------------------------------------------------------
   const handleGoToTitle = useCallback(() => {
     restartMatch();
     setScreen('title');
@@ -266,6 +333,17 @@ function App() {
   const isInstantWin = state.instantWinCondition !== null &&
     (state.phase === 'round_end' || state.phase === 'match_end');
 
+  // Roll button visibility:
+  // P1 can roll when phase is 'waiting' and hasn't rolled yet
+  // P2 can roll when phase is 'waiting' and hasn't rolled yet (and not CPU)
+  const p1CanRoll = state.phase === 'waiting' && !state.p1Rolled;
+  const p2CanRoll = state.phase === 'waiting' && !state.p2Rolled && !isCpuMode;
+
+  // Dice unrevealed: show "?" when opponent hasn't rolled yet
+  // In non-waiting phases (showing_results, resolving_*), both are revealed
+  const p1Unrevealed = state.phase === 'waiting' && !state.p1Rolled;
+  const p2Unrevealed = state.phase === 'waiting' && !state.p2Rolled;
+
   return (
     <div className={`min-h-[100dvh] bg-navy-900 text-cream flex flex-col overflow-hidden relative ${shaking ? 'animate-screen-shake' : ''}`}>
       {/* Background decorations */}
@@ -281,7 +359,7 @@ function App() {
         <PlayerArea
           player={state.player2}
           removedPool={state.removedPool}
-          isRolling={state.animationPhase === 'rolling'}
+          rollingMask={p2RollingDice.length > 0 ? p2RollingDice : undefined}
           highlights={p2Highlights}
           removedChanged={removedChanged}
           inverted={!isCpuMode}
@@ -289,6 +367,10 @@ function App() {
           diceIdPrefix="p2-dice"
           incomingCount={p2Incoming}
           incomingAnimClass={p2Incoming > 0 ? 'animate-die-incoming-from-bottom' : undefined}
+          unrevealed={p2Unrevealed}
+          canRoll={p2CanRoll}
+          hasRolled={state.p2Rolled}
+          onRoll={() => handlePlayerRoll(2)}
         />
       </div>
 
@@ -311,12 +393,12 @@ function App() {
           turn={state.turn}
           player1Name={state.player1.name}
           player2Name={state.player2.name}
-          player1Roll={state.player1.currentRoll}
-          player2Roll={state.player2.currentRoll}
+          player1Roll={state.p1Rolled ? state.player1.currentRoll : []}
+          player2Roll={state.p2Rolled ? state.player2.currentRoll : []}
         />
 
-        {/* Action buttons — fixed height to prevent layout shift */}
-        <div className="flex justify-center h-[52px] items-center">
+        {/* Center action area — priority dice / CPU choosing only */}
+        <div className="flex justify-center h-[40px] items-center">
           {isCpuTurn ? (
             <div className="px-6 py-2 rounded-lg font-pirate text-lg text-ghost-orange animate-pulse">
               CPUが選択中...
@@ -332,22 +414,7 @@ function App() {
             >
               優先度ダイスを振る！
             </button>
-          ) : (
-            <button
-              onClick={handleRoll}
-              disabled={state.phase !== 'waiting'}
-              className={`
-                px-8 py-3 rounded-xl font-pirate text-xl
-                transition-all duration-75
-                ${state.phase === 'waiting'
-                  ? 'bg-teal-600 text-navy-900 hover:bg-teal-400 active:scale-95 shadow-[0_0_20px_rgba(45,212,191,0.3)] animate-glow-pulse'
-                  : 'bg-teal-600/40 text-navy-900/60 cursor-not-allowed'
-                }
-              `}
-            >
-              振る！
-            </button>
-          )}
+          ) : null}
         </div>
       </div>
 
@@ -356,12 +423,16 @@ function App() {
         <PlayerArea
           player={state.player1}
           removedPool={state.removedPool}
-          isRolling={state.animationPhase === 'rolling'}
+          rollingMask={p1RollingDice.length > 0 ? p1RollingDice : undefined}
           highlights={p1Highlights}
           removedChanged={removedChanged}
           diceIdPrefix="p1-dice"
           incomingCount={p1Incoming}
           incomingAnimClass={p1Incoming > 0 ? 'animate-die-incoming-from-top' : undefined}
+          unrevealed={p1Unrevealed}
+          canRoll={p1CanRoll}
+          hasRolled={state.p1Rolled}
+          onRoll={() => handlePlayerRoll(1)}
         />
       </div>
 

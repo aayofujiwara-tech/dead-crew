@@ -30,6 +30,8 @@ export default {
       },
       animation: {
         'dice-roll': 'diceRoll 0.25s ease-out',
+        'dice-spin': 'diceSpin 0.15s ease-in-out infinite',
+        'die-bounce': 'dieBounce 0.2s ease-out',
         'dice-settle': 'diceSettle 0.15s ease-out',
         'dice-ghost': 'diceGhost 0.3s ease-out forwards',
         'dice-ghost-up': 'diceGhostUp 0.28s ease-in forwards',
@@ -57,6 +59,17 @@ export default {
           '0%': { transform: 'rotate(0deg) scale(0.5)', opacity: '0' },
           '50%': { transform: 'rotate(180deg) scale(1.2)' },
           '100%': { transform: 'rotate(360deg) scale(1)', opacity: '1' },
+        },
+        diceSpin: {
+          '0%, 100%': { transform: 'scale(0.9) rotate(0deg)' },
+          '25%': { transform: 'scale(0.8) rotate(8deg)' },
+          '50%': { transform: 'scale(0.9) rotate(-3deg)' },
+          '75%': { transform: 'scale(0.8) rotate(-6deg)' },
+        },
+        dieBounce: {
+          '0%': { transform: 'scale(1.25)' },
+          '60%': { transform: 'scale(0.9)' },
+          '100%': { transform: 'scale(1)' },
         },
         diceSettle: {
           '0%': { transform: 'scale(1.2)' },

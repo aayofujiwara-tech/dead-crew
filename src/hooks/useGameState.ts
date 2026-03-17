@@ -49,6 +49,8 @@ function createInitialState(mode: GameMode = 'local'): GameState {
     instantWinCondition: null,
     instantWinDice: [],
     instantWinPlayer: null,
+    p1Rolled: false,
+    p2Rolled: false,
   };
 }
 
@@ -59,6 +61,7 @@ function addLogs(state: GameState, messages: string[]): GameState {
 
 function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
+    // Legacy: simultaneous roll (kept for compatibility)
     case 'ROLL_DICE': {
       const p1Roll = rollDice(state.player1.diceCount);
       const p2Roll = rollDice(state.player2.diceCount);
@@ -70,6 +73,8 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         animationPhase: 'rolling',
         player1: { ...state.player1, currentRoll: p1Roll },
         player2: { ...state.player2, currentRoll: p2Roll },
+        p1Rolled: true,
+        p2Rolled: true,
         instantWinCondition: null,
         instantWinDice: [],
         instantWinPlayer: null,
@@ -77,6 +82,32 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           ...state.log,
           createLogEntry(`--- ターン ${newTurn} ---`, newTurn),
         ],
+      };
+    }
+
+    // Individual player roll
+    case 'ROLL_PLAYER': {
+      const isP1 = action.player === 1;
+      const playerKey = isP1 ? 'player1' : 'player2';
+      const playerState = state[playerKey];
+      const roll = rollDice(playerState.diceCount);
+
+      // First roll of the turn: increment turn counter and add log header
+      const isFirstRoll = !state.p1Rolled && !state.p2Rolled;
+      const newTurn = isFirstRoll ? state.turn + 1 : state.turn;
+
+      return {
+        ...state,
+        turn: newTurn,
+        [playerKey]: { ...playerState, currentRoll: roll },
+        p1Rolled: isP1 ? true : state.p1Rolled,
+        p2Rolled: isP1 ? state.p2Rolled : true,
+        instantWinCondition: isFirstRoll ? null : state.instantWinCondition,
+        instantWinDice: isFirstRoll ? [] : state.instantWinDice,
+        instantWinPlayer: isFirstRoll ? null : state.instantWinPlayer,
+        log: isFirstRoll
+          ? [...state.log, createLogEntry(`--- ターン ${newTurn} ---`, newTurn)]
+          : state.log,
       };
     }
 
@@ -246,28 +277,28 @@ function gameReducer(state: GameState, action: GameAction): GameState {
 
       if (p1Zero && p2Zero) {
         s = addLogs(s, ['両者ともダイスが0！引き分け！']);
-        return { ...s, phase: 'round_end', isDraw: true };
+        return { ...s, phase: 'round_end', isDraw: true, p1Rolled: false, p2Rolled: false };
       }
       if (p1Zero) {
         const newScore = s.player1.matchScore + 1;
         const p1 = { ...s.player1, matchScore: newScore };
         s = addLogs(s, [`${s.player1.name}のダイスが0に！ラウンド勝利！`]);
         if (newScore >= 2) {
-          return { ...s, player1: p1, phase: 'match_end', matchWinner: 1, animationPhase: 'victory' };
+          return { ...s, player1: p1, phase: 'match_end', matchWinner: 1, animationPhase: 'victory', p1Rolled: false, p2Rolled: false };
         }
-        return { ...s, player1: p1, phase: 'round_end', winner: 1, animationPhase: 'victory' };
+        return { ...s, player1: p1, phase: 'round_end', winner: 1, animationPhase: 'victory', p1Rolled: false, p2Rolled: false };
       }
       if (p2Zero) {
         const newScore = s.player2.matchScore + 1;
         const p2 = { ...s.player2, matchScore: newScore };
         s = addLogs(s, [`${s.player2.name}のダイスが0に！ラウンド勝利！`]);
         if (newScore >= 2) {
-          return { ...s, player2: p2, phase: 'match_end', matchWinner: 2, animationPhase: 'victory' };
+          return { ...s, player2: p2, phase: 'match_end', matchWinner: 2, animationPhase: 'victory', p1Rolled: false, p2Rolled: false };
         }
-        return { ...s, player2: p2, phase: 'round_end', winner: 2, animationPhase: 'victory' };
+        return { ...s, player2: p2, phase: 'round_end', winner: 2, animationPhase: 'victory', p1Rolled: false, p2Rolled: false };
       }
 
-      return { ...s, phase: 'waiting', animationPhase: 'idle' };
+      return { ...s, phase: 'waiting', animationPhase: 'idle', p1Rolled: false, p2Rolled: false };
     }
 
     case 'NEXT_ROUND': {
@@ -287,6 +318,8 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         instantWinCondition: null,
         instantWinDice: [],
         instantWinPlayer: null,
+        p1Rolled: false,
+        p2Rolled: false,
         log: [...state.log, createLogEntry(`=== ラウンド ${state.round + 1} 開始 ===`, state.turn)],
       };
     }
@@ -311,18 +344,16 @@ function gameReducer(state: GameState, action: GameAction): GameState {
 export function useGameState() {
   const [state, dispatch] = useReducer(gameReducer, undefined, createInitialState);
 
-  const rollAndProcess = useCallback(() => {
-    dispatch({ type: 'ROLL_DICE' });
+  const rollPlayer = useCallback((player: PlayerId) => {
+    dispatch({ type: 'ROLL_PLAYER', player });
+  }, []);
 
-    // Phase 1: roll animation (250ms)
-    setTimeout(() => {
-      dispatch({ type: 'SHOW_RESULTS' });
-    }, 250);
+  const showResults = useCallback(() => {
+    dispatch({ type: 'SHOW_RESULTS' });
+  }, []);
 
-    // Phase 2: viewing pause (500ms) then process
-    setTimeout(() => {
-      dispatch({ type: 'CHECK_INSTANT_WIN' });
-    }, 750);
+  const checkInstantWin = useCallback(() => {
+    dispatch({ type: 'CHECK_INSTANT_WIN' });
   }, []);
 
   const rollPriority = useCallback(() => {
@@ -354,7 +385,9 @@ export function useGameState() {
   return {
     state,
     dispatch,
-    rollAndProcess,
+    rollPlayer,
+    showResults,
+    checkInstantWin,
     rollPriority,
     makeChoice,
     resolveNormal,

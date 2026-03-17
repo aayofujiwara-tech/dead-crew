@@ -75,10 +75,14 @@ export interface GameState {
   instantWinCondition: string | null;
   instantWinDice: DieValue[];
   instantWinPlayer: PlayerId | null;
+  /** Whether each player has pressed their roll button this turn */
+  p1Rolled: boolean;
+  p2Rolled: boolean;
 }
 
 export type GameAction =
   | { type: 'ROLL_DICE' }
+  | { type: 'ROLL_PLAYER'; player: PlayerId }
   | { type: 'SET_ROLL_RESULTS'; p1Roll: DieValue[]; p2Roll: DieValue[] }
   | { type: 'SHOW_RESULTS' }
   | { type: 'CHECK_INSTANT_WIN' }

@@ -1,13 +1,17 @@
+import { useRef, useEffect, useState } from 'react';
 import type { DieValue, DieHighlight } from '../types/game';
 import { dieFacePositions } from '../utils/dice';
 
 interface DiceDisplayProps {
   dice: DieValue[];
   diceCount: number;
-  isRolling: boolean;
+  /** Per-die rolling state: true = still spinning, false = stopped */
+  rollingMask?: boolean[];
   highlights?: DieHighlight[];
   inverted?: boolean;
   diceIdPrefix?: string;
+  /** Show "?" placeholders (opponent hasn't rolled yet) */
+  unrevealed?: boolean;
   /** Number of incoming dice (transferred from opponent via 6s) */
   incomingCount?: number;
   /** Animation class for incoming dice */
@@ -51,7 +55,25 @@ function DieFace({ value, isRolling, highlight, diceId, extraClass }: {
 }) {
   const dots = dieFacePositions[value];
   const style = HIGHLIGHT_STYLES[highlight];
-  const animClass = isRolling ? 'animate-dice-roll' : style.animation;
+
+  // Detect rolling→stopped transition for bounce animation
+  const wasRolling = useRef(isRolling);
+  const [bouncing, setBouncing] = useState(false);
+
+  useEffect(() => {
+    if (wasRolling.current && !isRolling) {
+      setBouncing(true);
+      const t = setTimeout(() => setBouncing(false), 200);
+      return () => clearTimeout(t);
+    }
+    wasRolling.current = isRolling;
+  }, [isRolling]);
+
+  const animClass = isRolling
+    ? 'animate-dice-spin'
+    : bouncing
+      ? 'animate-die-bounce'
+      : style.animation;
 
   return (
     <div className={`relative ${extraClass ?? ''}`} data-dice-id={diceId}>
@@ -80,6 +102,14 @@ function DieFace({ value, isRolling, highlight, diceId, extraClass }: {
   );
 }
 
+function UnrevealedDie() {
+  return (
+    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg border-2 border-navy-500 bg-navy-700 flex items-center justify-center shadow-lg">
+      <span className="text-teal-600/50 text-lg font-bold">?</span>
+    </div>
+  );
+}
+
 function EmptyDie() {
   return (
     <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg border-2 border-dashed border-teal-600/30 flex items-center justify-center">
@@ -89,24 +119,28 @@ function EmptyDie() {
 }
 
 export default function DiceDisplay({
-  dice, diceCount, isRolling, highlights, inverted, diceIdPrefix,
-  incomingCount = 0, incomingAnimClass,
+  dice, diceCount, rollingMask, highlights, inverted, diceIdPrefix,
+  unrevealed, incomingCount = 0, incomingAnimClass,
 }: DiceDisplayProps) {
   return (
     <div className={`flex flex-wrap gap-2 justify-center relative ${inverted ? 'rotate-180' : ''}`}>
-      {dice.length > 0
-        ? dice.map((value, i) => (
-            <DieFace
-              key={i}
-              value={value}
-              isRolling={isRolling}
-              highlight={highlights?.[i] ?? 'normal'}
-              diceId={diceIdPrefix ? `${diceIdPrefix}-${i}` : undefined}
-            />
+      {unrevealed
+        ? Array.from({ length: diceCount }, (_, i) => (
+            <UnrevealedDie key={i} />
           ))
-        : Array.from({ length: diceCount }, (_, i) => (
-            <EmptyDie key={i} />
-          ))
+        : dice.length > 0
+          ? dice.map((value, i) => (
+              <DieFace
+                key={i}
+                value={value}
+                isRolling={rollingMask?.[i] ?? false}
+                highlight={highlights?.[i] ?? 'normal'}
+                diceId={diceIdPrefix ? `${diceIdPrefix}-${i}` : undefined}
+              />
+            ))
+          : Array.from({ length: diceCount }, (_, i) => (
+              <EmptyDie key={i} />
+            ))
       }
       {/* Incoming dice from opponent (6s transferred) */}
       {incomingCount > 0 && incomingAnimClass && (

@@ -5,7 +5,8 @@ import MatchScore from './MatchScore';
 interface PlayerAreaProps {
   player: PlayerState;
   removedPool: number;
-  isRolling: boolean;
+  /** Per-die rolling state */
+  rollingMask?: boolean[];
   highlights?: DieHighlight[];
   removedChanged?: boolean;
   inverted?: boolean;
@@ -13,12 +14,21 @@ interface PlayerAreaProps {
   diceIdPrefix?: string;
   incomingCount?: number;
   incomingAnimClass?: string;
+  /** Whether this player's dice are hidden (hasn't rolled yet) */
+  unrevealed?: boolean;
+  /** Whether the roll button should be active */
+  canRoll?: boolean;
+  /** Whether this player has already rolled */
+  hasRolled?: boolean;
+  /** Called when the player clicks their roll button */
+  onRoll?: () => void;
 }
 
 export default function PlayerArea({
-  player, removedPool, isRolling, highlights,
+  player, removedPool, rollingMask, highlights,
   removedChanged = false, inverted, isCpu, diceIdPrefix,
   incomingCount, incomingAnimClass,
+  unrevealed, canRoll, hasRolled, onRoll,
 }: PlayerAreaProps) {
   return (
     <div
@@ -61,13 +71,35 @@ export default function PlayerArea({
         <DiceDisplay
           dice={player.currentRoll}
           diceCount={player.diceCount}
-          isRolling={isRolling}
+          rollingMask={rollingMask}
           highlights={highlights}
           inverted={inverted}
           diceIdPrefix={diceIdPrefix}
+          unrevealed={unrevealed}
           incomingCount={incomingCount}
           incomingAnimClass={incomingAnimClass}
         />
+      </div>
+
+      {/* Per-player roll button */}
+      <div className="h-[40px] flex items-center justify-center">
+        {canRoll ? (
+          <button
+            onClick={onRoll}
+            className="
+              px-6 py-2 rounded-xl font-pirate text-lg
+              bg-teal-600 text-navy-900 hover:bg-teal-400 active:scale-95
+              shadow-[0_0_15px_rgba(45,212,191,0.3)] animate-glow-pulse
+              transition-all duration-75
+            "
+          >
+            振る！
+          </button>
+        ) : hasRolled ? (
+          <span className="text-teal-400/50 text-sm font-pirate">待機中...</span>
+        ) : (
+          <span className="text-teal-600/20 text-sm">-</span>
+        )}
       </div>
     </div>
   );
