@@ -28,6 +28,33 @@ export default function RuleScreen({ onBack }: RuleScreenProps) {
         <Section title="勝利条件">
           <Rule text="手持ちダイスが0になったらラウンド勝利" />
           <Rule text="両者同時に0の場合は引き分け（勝利カウントなし）" />
+
+          <p className="text-teal-400/70 text-xs mt-4 mb-2">即勝利条件（通常の処理より先にチェック）</p>
+
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="text-xs font-bold text-navy-900 bg-teal-400 rounded-full px-2.5 py-0.5">1勝獲得</span>
+          </div>
+          <div className="space-y-1 mb-3">
+            <Rule text="4個ぞろ目 ― 4個が同じ目" />
+            <Rule text="フルハウス ― 3個ぞろ目＋2個ぞろ目" />
+          </div>
+
+          <div className="rounded-lg border border-yellow-500/40 bg-yellow-500/5 px-3 py-2">
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="text-xs font-bold text-navy-900 bg-yellow-400 rounded-full px-2.5 py-0.5">2勝獲得</span>
+              <span className="text-[10px] font-bold text-yellow-400 border border-yellow-500/50 rounded-full px-2 py-0.5">マッチ即勝利</span>
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-start gap-2 text-sm">
+                <span className="text-yellow-400 mt-0.5 flex-shrink-0">▸</span>
+                <span className="text-yellow-300">5個以上のぞろ目 ― 手持ちダイス5個以上が全て同じ目</span>
+              </div>
+              <div className="flex items-start gap-2 text-sm">
+                <span className="text-yellow-400 mt-0.5 flex-shrink-0">▸</span>
+                <span className="text-yellow-300">ダブルトリプル ― 2種類の目が3個ずつ（手持ち6個のとき）</span>
+              </div>
+            </div>
+          </div>
         </Section>
 
         {/* 通常の出目効果 */}

@@ -24,6 +24,7 @@ function App() {
   const [p1Name, setP1Name] = useState('キャプテン');
   const [p2Name, setP2Name] = useState('');
   const [showEffects, setShowEffects] = useState(false);
+  const [showQuitConfirm, setShowQuitConfirm] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [removedChanged, setRemovedChanged] = useState(false);
   const [diceEffects, setDiceEffects] = useState<DiceEffect[]>([]);
@@ -429,6 +430,21 @@ function App() {
         <div className="absolute bottom-20 right-5 text-4xl opacity-10 animate-float" style={{ animationDelay: '0.5s' }}>⚓</div>
       </div>
 
+      {/* Go to title button */}
+      <button
+        onClick={() => setShowQuitConfirm(true)}
+        className="
+          absolute top-2 left-2 z-30
+          w-8 h-8 rounded-lg flex items-center justify-center
+          bg-navy-800/60 text-teal-400/50 border border-teal-600/20
+          hover:bg-navy-700 hover:text-teal-400 hover:border-teal-600/40
+          transition-all duration-150 text-sm
+        "
+        title="タイトルに戻る"
+      >
+        ⚓
+      </button>
+
       {/* Player 2 area (top) */}
       <div className="flex-1 flex flex-col justify-end border-b border-teal-600/20">
         <PlayerArea
@@ -549,6 +565,41 @@ function App() {
           instantWinDice={state.instantWinDice}
           isRareWin={state.isRareWin}
         />
+      )}
+
+      {/* Quit confirmation dialog */}
+      {showQuitConfirm && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70">
+          <div className="bg-navy-800 border border-teal-600/30 rounded-2xl px-6 py-5 max-w-xs w-full mx-4 text-center shadow-[0_0_30px_rgba(0,0,0,0.5)]">
+            <p className="font-pirate text-xl text-ghost-orange mb-2">タイトルに戻りますか？</p>
+            <p className="text-teal-400/70 text-sm mb-5">現在のゲームの進行状況は失われます</p>
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={() => setShowQuitConfirm(false)}
+                className="
+                  px-5 py-2 rounded-xl font-pirate text-base
+                  bg-navy-700 text-cream/60 border border-teal-600/30
+                  hover:bg-navy-600 hover:text-cream transition-all duration-150
+                "
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={() => {
+                  setShowQuitConfirm(false);
+                  handleGoToTitle();
+                }}
+                className="
+                  px-5 py-2 rounded-xl font-pirate text-base
+                  bg-ghost-orange text-navy-900
+                  hover:bg-orange-400 transition-all duration-150
+                "
+              >
+                戻る
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Match end screen */}
