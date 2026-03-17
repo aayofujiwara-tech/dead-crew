@@ -21,7 +21,8 @@ import {
 
 function App() {
   const [screen, setScreen] = useState<'title' | 'rule' | 'game'>('title');
-  const [playerName, setPlayerName] = useState('キャプテン');
+  const [p1Name, setP1Name] = useState('キャプテン');
+  const [p2Name, setP2Name] = useState('');
   const [showEffects, setShowEffects] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [removedChanged, setRemovedChanged] = useState(false);
@@ -388,9 +389,11 @@ function App() {
     ? computeDiceHighlights(state.player2.currentRoll)
     : undefined;
 
-  const handleStart = useCallback((mode: GameMode, name: string) => {
-    setPlayerName(name);
-    restartMatch(mode, name, randomPirateName());
+  const handleStart = useCallback((mode: GameMode, name1: string, name2?: string) => {
+    setP1Name(name1);
+    const opponent = name2 ?? randomPirateName();
+    setP2Name(opponent);
+    restartMatch(mode, name1, opponent);
     setScreen('game');
   }, [restartMatch]);
 
@@ -555,7 +558,10 @@ function App() {
           winner={state.matchWinner}
           isDraw={false}
           winnerName={state.matchWinner ? getPlayerName(state.matchWinner) : ''}
-          onNext={() => restartMatch(undefined, playerName, randomPirateName())}
+          onNext={() => {
+            const isCpu = state.mode === 'cpu';
+            restartMatch(undefined, p1Name, isCpu ? randomPirateName() : p2Name);
+          }}
           onGoToTitle={handleGoToTitle}
           isInstantWin={isInstantWin}
           instantWinCondition={state.instantWinCondition}
