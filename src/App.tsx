@@ -315,9 +315,24 @@ function App() {
           player2Roll={state.player2.currentRoll}
         />
 
-        {/* Action buttons */}
-        <div className="flex justify-center">
-          {(state.phase === 'waiting' || state.phase === 'rolling' || state.phase === 'showing_results') && (
+        {/* Action buttons — fixed height to prevent layout shift */}
+        <div className="flex justify-center h-[52px] items-center">
+          {isCpuTurn ? (
+            <div className="px-6 py-2 rounded-lg font-pirate text-lg text-ghost-orange animate-pulse">
+              CPUが選択中...
+            </div>
+          ) : state.phase === 'resolving_priority' ? (
+            <button
+              onClick={rollPriority}
+              className="
+                px-6 py-2 rounded-lg font-pirate text-lg
+                bg-ghost-orange text-navy-900
+                hover:bg-orange-400 transition-all duration-75
+              "
+            >
+              優先度ダイスを振る！
+            </button>
+          ) : (
             <button
               onClick={handleRoll}
               disabled={state.phase !== 'waiting'}
@@ -331,25 +346,6 @@ function App() {
               `}
             >
               振る！
-            </button>
-          )}
-
-          {isCpuTurn && (
-            <div className="px-6 py-2 rounded-lg font-pirate text-lg text-ghost-orange animate-pulse">
-              CPUが選択中...
-            </div>
-          )}
-
-          {state.phase === 'resolving_priority' && (
-            <button
-              onClick={rollPriority}
-              className="
-                px-6 py-2 rounded-lg font-pirate text-lg
-                bg-ghost-orange text-navy-900
-                hover:bg-orange-400 transition-all duration-75
-              "
-            >
-              優先度ダイスを振る！
             </button>
           )}
         </div>
