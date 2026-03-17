@@ -33,6 +33,7 @@ function App() {
   // Special effect announcement overlay
   const [specialAnnouncement, setSpecialAnnouncement] = useState<string | null>(null);
   const announcementShownTurnRef = useRef<number>(-1);
+  const announcementTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Per-die rolling state for staggered stop animation
   const [p1RollingDice, setP1RollingDice] = useState<boolean[]>([]);
@@ -288,10 +289,27 @@ function App() {
       .filter(Boolean);
     if (texts.length === 0) return;
 
+    // Clear any existing timer before starting a new one
+    if (announcementTimerRef.current) clearTimeout(announcementTimerRef.current);
+
     setSpecialAnnouncement(texts.join('\n'));
-    const timer = setTimeout(() => setSpecialAnnouncement(null), 1500);
-    return () => clearTimeout(timer);
+    announcementTimerRef.current = setTimeout(() => {
+      setSpecialAnnouncement(null);
+      announcementTimerRef.current = null;
+    }, 1500);
+    // Do NOT return cleanup — the timer must survive re-renders from dependency changes
   }, [state.phase, state.turn, state.pendingChoices]);
+
+  // Force-clear announcement when phase returns to waiting or round/match ends
+  useEffect(() => {
+    if (state.phase === 'waiting' || state.phase === 'resolving_normal' || state.phase === 'round_end' || state.phase === 'match_end') {
+      if (announcementTimerRef.current) {
+        clearTimeout(announcementTimerRef.current);
+        announcementTimerRef.current = null;
+      }
+      setSpecialAnnouncement(null);
+    }
+  }, [state.phase]);
 
   // ---------------------------------------------------------------------------
   // Choice handling
