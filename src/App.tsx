@@ -194,6 +194,8 @@ function App() {
     if (!hasOnes && !hasSixes) {
       animatingRef.current = false;
       resolveNormal();
+      setP1RollingDice([]);
+      setP2RollingDice([]);
       return;
     }
 
@@ -231,6 +233,14 @@ function App() {
 
         // Step 4: Update state (diceCount changes, phase → waiting)
         resolveNormal();
+
+        // Step 5: Clean up animation state — diceCount now includes transferred
+        // dice, so incoming indicators would double-count. Rolling masks are also
+        // stale from the previous roll.
+        setP1Incoming(0);
+        setP2Incoming(0);
+        setP1RollingDice([]);
+        setP2RollingDice([]);
       } finally {
         animatingRef.current = false;
       }

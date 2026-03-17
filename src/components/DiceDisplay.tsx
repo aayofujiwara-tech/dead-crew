@@ -165,8 +165,9 @@ export default function DiceDisplay({
               <EmptyDie key={i} />
             ))
       }
-      {/* Incoming dice from opponent (6s transferred) */}
-      {incomingCount > 0 && incomingAnimClass && (
+      {/* Incoming dice from opponent (6s transferred) —
+         hide when unrevealed because diceCount already includes transferred dice */}
+      {!unrevealed && incomingCount > 0 && incomingAnimClass && (
         Array.from({ length: incomingCount }, (_, i) => (
           <DieFace
             key={`incoming-${i}`}
