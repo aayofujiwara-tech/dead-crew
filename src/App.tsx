@@ -306,7 +306,14 @@ function App() {
           </span>
         </div>
 
-        <GameLog log={state.log} />
+        <GameLog
+          log={state.log}
+          turn={state.turn}
+          player1Name={state.player1.name}
+          player2Name={state.player2.name}
+          player1Roll={state.player1.currentRoll}
+          player2Roll={state.player2.currentRoll}
+        />
 
         {/* Action buttons */}
         <div className="flex justify-center">
