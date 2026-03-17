@@ -7,20 +7,57 @@ interface TitleScreenProps {
 }
 
 const INPUT_CLASS = `
-  w-full px-4 py-2.5 rounded-xl text-center font-pirate text-lg
-  bg-navy-700 text-cream border border-teal-600/50
+  w-full px-3 py-2.5 rounded-r-xl text-center font-pirate text-lg
+  bg-navy-700 text-cream border border-l-0 border-teal-600/50
   placeholder:text-teal-600/40
   focus:outline-none focus:border-teal-400 focus:shadow-[0_0_15px_rgba(45,212,191,0.2)]
   transition-all
 `;
+
+function toDisplayName(input: string): string {
+  const trimmed = input.trim();
+  return trimmed ? `キャプテン・${trimmed}` : 'キャプテン';
+}
+
+function NameInput({ value, onChange, label, labelColor }: {
+  value: string;
+  onChange: (v: string) => void;
+  label: string;
+  labelColor: string;
+}) {
+  return (
+    <div>
+      <label className={`block font-pirate text-sm ${labelColor} mb-1 text-center`}>
+        {label}
+      </label>
+      <div className="flex items-stretch">
+        <span className="
+          flex items-center px-3 rounded-l-xl font-pirate text-base
+          bg-navy-800 text-teal-400 border border-r-0 border-teal-600/50
+          select-none whitespace-nowrap
+        ">
+          キャプテン・
+        </span>
+        <input
+          type="text"
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          placeholder="名前を入力"
+          maxLength={8}
+          className={INPUT_CLASS}
+        />
+      </div>
+    </div>
+  );
+}
 
 export default function TitleScreen({ onStart, onShowRules }: TitleScreenProps) {
   const [p1Name, setP1Name] = useState('');
   const [p2Name, setP2Name] = useState('');
   const [showLocal, setShowLocal] = useState(false);
 
-  const p1Display = p1Name.trim() || 'キャプテン';
-  const p2Display = p2Name.trim() || 'キャプテン';
+  const p1Display = toDisplayName(p1Name);
+  const p2Display = toDisplayName(p2Name);
 
   return (
     <div className="min-h-[100dvh] bg-navy-900 text-cream flex flex-col items-center justify-center relative overflow-hidden">
@@ -63,32 +100,8 @@ export default function TitleScreen({ onStart, onShowRules }: TitleScreenProps) 
           <>
             {/* 2P name inputs */}
             <div className="w-full mb-4 space-y-3">
-              <div>
-                <label className="block font-pirate text-sm text-teal-400 mb-1 text-center">
-                  船長1の名前
-                </label>
-                <input
-                  type="text"
-                  value={p1Name}
-                  onChange={e => setP1Name(e.target.value)}
-                  placeholder="キャプテン"
-                  maxLength={12}
-                  className={INPUT_CLASS}
-                />
-              </div>
-              <div>
-                <label className="block font-pirate text-sm text-ghost-orange mb-1 text-center">
-                  船長2の名前
-                </label>
-                <input
-                  type="text"
-                  value={p2Name}
-                  onChange={e => setP2Name(e.target.value)}
-                  placeholder="キャプテン"
-                  maxLength={12}
-                  className={INPUT_CLASS}
-                />
-              </div>
+              <NameInput value={p1Name} onChange={setP1Name} label="船長1の名前" labelColor="text-teal-400" />
+              <NameInput value={p2Name} onChange={setP2Name} label="船長2の名前" labelColor="text-ghost-orange" />
               <p className="text-teal-400/50 text-xs text-center">
                 空欄なら「キャプテン」になるぞ
               </p>
@@ -123,17 +136,7 @@ export default function TitleScreen({ onStart, onShowRules }: TitleScreenProps) 
           <>
             {/* Name input (for CPU mode) */}
             <div className="w-full mb-6">
-              <label className="block font-pirate text-sm text-teal-400 mb-1.5 text-center">
-                船長の名前
-              </label>
-              <input
-                type="text"
-                value={p1Name}
-                onChange={e => setP1Name(e.target.value)}
-                placeholder="キャプテン"
-                maxLength={12}
-                className={INPUT_CLASS}
-              />
+              <NameInput value={p1Name} onChange={setP1Name} label="船長の名前" labelColor="text-teal-400" />
               <p className="text-teal-400/50 text-xs text-center mt-1">
                 空欄なら「キャプテン」になるぞ
               </p>
