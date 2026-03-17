@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import type { PlayerId, DieValue } from '../types/game';
 import { dieFacePositions } from '../utils/dice';
 
@@ -78,6 +79,17 @@ export default function VictoryScreen({
   instantWinDice,
   isRareWin,
 }: VictoryScreenProps) {
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        onNext();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onNext]);
+
   const borderColor = isRareWin
     ? 'border-yellow-400'
     : 'border-ghost-orange';
