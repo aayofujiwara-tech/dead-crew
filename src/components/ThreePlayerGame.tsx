@@ -5,9 +5,7 @@ import TargetChoiceDialog from './TargetChoiceDialog';
 import VictoryScreen from './VictoryScreen';
 import type { DieHighlight, PlayerId } from '../types/game';
 import {
-  animateDiceRemove,
   resetDiceStyles,
-  waitForHighlightPaint,
 } from '../utils/animateDice';
 
 interface ThreePlayerGameProps {
@@ -55,8 +53,6 @@ export default function ThreePlayerGame({ names, onGoToTitle, isCpu = false }: T
   const [showQuitConfirm, setShowQuitConfirm] = useState(false);
   const [removedChanged, setRemovedChanged] = useState(false);
   const prevRemovedRef = useRef(state.removedPool);
-  const animatingRef = useRef(false);
-
   // Per-die rolling state for staggered stop
   const [rollingDice, setRollingDice] = useState<[boolean[], boolean[], boolean[]]>([[], [], []]);
   const stopTimersRef = useRef<ReturnType<typeof setTimeout>[][]>([[], [], []]);

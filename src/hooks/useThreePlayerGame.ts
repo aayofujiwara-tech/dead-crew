@@ -6,7 +6,6 @@ import type {
   PlayerState,
   PlayerId,
   DieValue,
-  LogEntry,
 } from '../types/game';
 import { rollDice } from '../utils/dice';
 import { createLogEntry, resetLogCounter } from '../utils/effects';
