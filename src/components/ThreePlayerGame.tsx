@@ -13,6 +13,19 @@ import {
 interface ThreePlayerGameProps {
   names: [string, string, string];
   onGoToTitle: () => void;
+  /** Player 3 is CPU */
+  isCpu?: boolean;
+}
+
+/** CPU picks the opponent with the most dice; random on tie */
+function cpuPickTarget(
+  actorId: PlayerId,
+  players: readonly [{ id: PlayerId; diceCount: number }, { id: PlayerId; diceCount: number }, { id: PlayerId; diceCount: number }],
+): PlayerId {
+  const opponents = players.filter(p => p.id !== actorId);
+  if (opponents[0].diceCount > opponents[1].diceCount) return opponents[0].id;
+  if (opponents[1].diceCount > opponents[0].diceCount) return opponents[1].id;
+  return Math.random() < 0.5 ? opponents[0].id : opponents[1].id;
 }
 
 /** Compute dice highlights for 3-player mode: 1=ghost, 4=triple(teal), 6=push(orange) */
@@ -25,7 +38,7 @@ function computeHighlights3P(dice: number[]): DieHighlight[] {
   });
 }
 
-export default function ThreePlayerGame({ names, onGoToTitle }: ThreePlayerGameProps) {
+export default function ThreePlayerGame({ names, onGoToTitle, isCpu = false }: ThreePlayerGameProps) {
   const {
     state,
     rollPlayer,
@@ -174,6 +187,47 @@ export default function ThreePlayerGame({ names, onGoToTitle }: ThreePlayerGameP
   }, [state.phase, state.rolled, handlePlayerRoll]);
 
   // -----------------------------------------------------------------------
+  // CPU auto-roll: after any human rolls and all their dice stop, CPU rolls
+  // -----------------------------------------------------------------------
+  useEffect(() => {
+    if (!isCpu) return;
+    if (state.phase !== 'waiting') return;
+    if (state.rolled[2]) return; // P3 (CPU) already rolled
+
+    // Need at least one human to have rolled
+    const anyHumanRolled = state.rolled[0] || state.rolled[1];
+    if (!anyHumanRolled) return;
+
+    // Wait for all rolled humans' dice to stop
+    for (let i = 0; i < 2; i++) {
+      if (state.rolled[i]) {
+        const allStopped = rollingDice[i].length > 0 && rollingDice[i].every(r => !r);
+        if (!allStopped) return;
+      }
+    }
+
+    const timer = setTimeout(() => handlePlayerRoll(3), 500);
+    return () => clearTimeout(timer);
+  }, [isCpu, state.phase, state.rolled, rollingDice, handlePlayerRoll]);
+
+  // -----------------------------------------------------------------------
+  // CPU auto-choose target for choice effects
+  // -----------------------------------------------------------------------
+  const currentChoice = state.choiceQueue[state.currentChoiceIndex];
+  const isCpuTurn = isCpu && currentChoice?.player === 3;
+
+  useEffect(() => {
+    if (!isCpuTurn) return;
+    if (state.phase !== 'resolving_choices') return;
+
+    const timer = setTimeout(() => {
+      const target = cpuPickTarget(3, state.players);
+      chooseTarget(target);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [isCpuTurn, state.phase, state.currentChoiceIndex, state.players, chooseTarget]);
+
+  // -----------------------------------------------------------------------
   // Rendering
   // -----------------------------------------------------------------------
   const handleGoToTitle = useCallback(() => {
@@ -185,10 +239,9 @@ export default function ThreePlayerGame({ names, onGoToTitle }: ThreePlayerGameP
     showEffects ? computeHighlights3P(p.currentRoll) : undefined,
   );
 
-  // Current choice info
-  const currentChoice = state.choiceQueue[state.currentChoiceIndex];
+  // Current choice info — currentChoice and isCpuTurn declared above
   const showTargetDialog =
-    state.phase === 'resolving_choices' && currentChoice != null;
+    state.phase === 'resolving_choices' && currentChoice != null && !isCpuTurn;
 
   // Count remaining choices of same type for same player
   const choiceRemaining = currentChoice
@@ -201,9 +254,9 @@ export default function ThreePlayerGame({ names, onGoToTitle }: ThreePlayerGameP
         ).length
     : 0;
 
-  // Roll buttons
+  // Roll buttons — P3 can't roll manually in CPU mode
   const canRoll = state.players.map(
-    (_, i) => state.phase === 'waiting' && !state.rolled[i],
+    (_, i) => state.phase === 'waiting' && !state.rolled[i] && !(isCpu && i === 2),
   );
 
   // Unrevealed
@@ -267,6 +320,7 @@ export default function ThreePlayerGame({ names, onGoToTitle }: ThreePlayerGameP
           highlights={highlights[2]}
           removedChanged={removedChanged}
           inverted
+          isCpu={isCpu}
           diceIdPrefix="p3-dice"
           unrevealed={unrevealed[2]}
           canRoll={canRoll[2]}
@@ -326,9 +380,13 @@ export default function ThreePlayerGame({ names, onGoToTitle }: ThreePlayerGameP
           </div>
         </div>
 
-        {/* Priority roll button */}
+        {/* Priority roll button / CPU choosing indicator */}
         <div className="flex justify-center h-[28px] items-center">
-          {state.phase === 'resolving_priority' ? (
+          {isCpuTurn ? (
+            <div className="px-4 py-1 rounded-lg font-pirate text-base text-ghost-orange animate-pulse">
+              CPUが選択中...
+            </div>
+          ) : state.phase === 'resolving_priority' ? (
             <button
               onClick={rollPriority}
               className="
