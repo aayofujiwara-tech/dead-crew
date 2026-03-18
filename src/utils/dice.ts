@@ -54,10 +54,9 @@ export function getInstantWinCondition(dice: DieValue[]): InstantWinResult | nul
     return { name: '6個ぞろ目', points: 2, isRare: true };
   }
 
-  // 5個ぞろ目: 5+ dice the same (rare when exactly 5 dice)
+  // 5個以上ぞろ目: 5+ dice the same — always 2 points, match instant win
   if (hasNOfAKind(dice, 5)) {
-    const rare = dice.length === 5;
-    return { name: '5個ぞろ目', points: rare ? 2 : 1, isRare: rare };
+    return { name: '5個ぞろ目', points: 2, isRare: true };
   }
 
   // 4個ぞろ目
