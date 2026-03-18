@@ -51,207 +51,203 @@ function NameInput({ value, onChange, label, labelColor }: {
   );
 }
 
-type View = 'main' | 'local2' | '3p_menu' | '3p_cpu' | '3p_local';
+const BACK_BTN = `
+  px-6 py-2 rounded-xl font-pirate text-base
+  bg-navy-700 text-teal-400 border border-teal-600/50
+  hover:bg-teal-600/20 hover:border-teal-400 transition-all duration-75
+`;
+
+type Step = 'count' | 'mode' | 'names';
 
 export default function TitleScreen({ onStart, onShowRules }: TitleScreenProps) {
   const [p1Name, setP1Name] = useState('');
   const [p2Name, setP2Name] = useState('');
   const [p3Name, setP3Name] = useState('');
-  const [view, setView] = useState<View>('main');
+  const [step, setStep] = useState<Step>('count');
+  const [playerCount, setPlayerCount] = useState<2 | 3>(2);
+  const [selectedMode, setSelectedMode] = useState<GameMode>('cpu');
 
   const p1Display = toDisplayName(p1Name);
   const p2Display = toDisplayName(p2Name);
   const p3Display = toDisplayName(p3Name);
 
+  function goToMode(count: 2 | 3) {
+    setPlayerCount(count);
+    setStep('mode');
+  }
+
+  function goToNames(mode: GameMode) {
+    setSelectedMode(mode);
+    setStep('names');
+  }
+
+  function handleLaunch() {
+    switch (selectedMode) {
+      case 'cpu':
+        onStart('cpu', p1Display);
+        break;
+      case 'local':
+        onStart('local', p1Display, p2Display);
+        break;
+      case 'cpu3':
+        onStart('cpu3', p1Display, p2Display);
+        break;
+      case 'local3':
+        onStart('local3', p1Display, p2Display, p3Display);
+        break;
+    }
+  }
+
   function renderContent() {
-    switch (view) {
-      case 'local2':
+    switch (step) {
+      // ----- Step 1: Choose player count -----
+      case 'count':
         return (
           <>
-            <div className="w-full mb-4 space-y-3">
-              <NameInput value={p1Name} onChange={setP1Name} label="船長1の名前" labelColor="text-teal-400" />
-              <NameInput value={p2Name} onChange={setP2Name} label="船長2の名前" labelColor="text-ghost-orange" />
-              <p className="text-teal-400/50 text-xs text-center">
-                空欄なら「キャプテン」になるぞ
-              </p>
-            </div>
             <button
-              onClick={() => onStart('local', p1Display, p2Display)}
+              onClick={() => goToMode(2)}
               className="
                 px-10 py-4 rounded-xl font-pirate text-2xl
                 bg-teal-600 text-navy-900
                 hover:bg-teal-400 active:scale-95
                 transition-all duration-200
                 shadow-[0_0_30px_rgba(45,212,191,0.4)]
-                animate-glow-pulse mb-3
+                animate-glow-pulse mb-3 w-full max-w-xs
               "
             >
-              出航！
+              2人で遊ぶ
             </button>
-            <button onClick={() => setView('main')} className="px-6 py-2 rounded-xl font-pirate text-base bg-navy-700 text-teal-400 border border-teal-600/50 hover:bg-teal-600/20 hover:border-teal-400 transition-all duration-75">
-              戻る
-            </button>
-          </>
-        );
 
-      case '3p_menu':
-        return (
-          <>
-            <p className="font-pirate text-xl text-teal-400 mb-6 text-center">
-              3人モードを選択
-            </p>
             <button
-              onClick={() => setView('3p_cpu')}
+              onClick={() => goToMode(3)}
               className="
-                px-10 py-3 rounded-xl font-pirate text-xl
-                bg-teal-600 text-navy-900
-                hover:bg-teal-400 active:scale-95
-                transition-all duration-200
-                shadow-[0_0_20px_rgba(45,212,191,0.3)]
-                mb-3 w-full max-w-xs
-              "
-            >
-              CPUと対戦（2人+CPU）
-            </button>
-            <button
-              onClick={() => setView('3p_local')}
-              className="
-                px-10 py-3 rounded-xl font-pirate text-xl
+                px-10 py-4 rounded-xl font-pirate text-2xl
                 bg-navy-700 text-yellow-400 border border-yellow-500/50
                 hover:bg-yellow-600/20 hover:border-yellow-400
-                active:scale-95
-                transition-all duration-200
+                active:scale-95 transition-all duration-200
                 mb-4 w-full max-w-xs
               "
             >
-              3人で対戦
-            </button>
-            <button onClick={() => setView('main')} className="px-6 py-2 rounded-xl font-pirate text-base bg-navy-700 text-teal-400 border border-teal-600/50 hover:bg-teal-600/20 hover:border-teal-400 transition-all duration-75">
-              戻る
-            </button>
-          </>
-        );
-
-      case '3p_cpu':
-        return (
-          <>
-            <p className="font-pirate text-lg text-teal-400/70 mb-3 text-center">
-              船長3はCPUが操作します
-            </p>
-            <div className="w-full mb-4 space-y-3">
-              <NameInput value={p1Name} onChange={setP1Name} label="船長1の名前" labelColor="text-teal-400" />
-              <NameInput value={p2Name} onChange={setP2Name} label="船長2の名前" labelColor="text-ghost-orange" />
-              <p className="text-teal-400/50 text-xs text-center">
-                空欄なら「キャプテン」になるぞ
-              </p>
-            </div>
-            <button
-              onClick={() => onStart('cpu3', p1Display, p2Display)}
-              className="
-                px-10 py-4 rounded-xl font-pirate text-2xl
-                bg-teal-600 text-navy-900
-                hover:bg-teal-400 active:scale-95
-                transition-all duration-200
-                shadow-[0_0_30px_rgba(45,212,191,0.4)]
-                animate-glow-pulse mb-3
-              "
-            >
-              出航！
-            </button>
-            <button onClick={() => setView('3p_menu')} className="px-6 py-2 rounded-xl font-pirate text-base bg-navy-700 text-teal-400 border border-teal-600/50 hover:bg-teal-600/20 hover:border-teal-400 transition-all duration-75">
-              戻る
-            </button>
-          </>
-        );
-
-      case '3p_local':
-        return (
-          <>
-            <div className="w-full mb-4 space-y-3">
-              <NameInput value={p1Name} onChange={setP1Name} label="船長1の名前" labelColor="text-teal-400" />
-              <NameInput value={p2Name} onChange={setP2Name} label="船長2の名前" labelColor="text-ghost-orange" />
-              <NameInput value={p3Name} onChange={setP3Name} label="船長3の名前" labelColor="text-yellow-400" />
-              <p className="text-teal-400/50 text-xs text-center">
-                空欄なら「キャプテン」になるぞ
-              </p>
-            </div>
-            <button
-              onClick={() => onStart('local3', p1Display, p2Display, p3Display)}
-              className="
-                px-10 py-4 rounded-xl font-pirate text-2xl
-                bg-teal-600 text-navy-900
-                hover:bg-teal-400 active:scale-95
-                transition-all duration-200
-                shadow-[0_0_30px_rgba(45,212,191,0.4)]
-                animate-glow-pulse mb-3
-              "
-            >
-              出航！
-            </button>
-            <button onClick={() => setView('3p_menu')} className="px-6 py-2 rounded-xl font-pirate text-base bg-navy-700 text-teal-400 border border-teal-600/50 hover:bg-teal-600/20 hover:border-teal-400 transition-all duration-75">
-              戻る
-            </button>
-          </>
-        );
-
-      default: // 'main'
-        return (
-          <>
-            {/* Name input (for CPU mode) */}
-            <div className="w-full mb-6">
-              <NameInput value={p1Name} onChange={setP1Name} label="船長の名前" labelColor="text-teal-400" />
-              <p className="text-teal-400/50 text-xs text-center mt-1">
-                空欄なら「キャプテン」になるぞ
-              </p>
-            </div>
-
-            <button
-              onClick={() => onStart('cpu', p1Display)}
-              className="
-                px-10 py-4 rounded-xl font-pirate text-2xl
-                bg-teal-600 text-navy-900
-                hover:bg-teal-400 active:scale-95
-                transition-all duration-200
-                shadow-[0_0_30px_rgba(45,212,191,0.4)]
-                animate-glow-pulse mb-3
-              "
-            >
-              CPU と対戦
+              3人で遊ぶ
             </button>
 
-            <button
-              onClick={() => setView('local2')}
-              className="
-                px-10 py-3 rounded-xl font-pirate text-xl
-                bg-navy-700 text-teal-400 border border-teal-600/50
-                hover:bg-teal-600/20 hover:border-teal-400
-                active:scale-95 transition-all duration-200 mb-2
-              "
-            >
-              2人で対戦
-            </button>
-
-            <button
-              onClick={() => setView('3p_menu')}
-              className="
-                px-10 py-3 rounded-xl font-pirate text-xl
-                bg-navy-700 text-yellow-400 border border-yellow-500/50
-                hover:bg-yellow-600/20 hover:border-yellow-400
-                active:scale-95 transition-all duration-200 mb-4
-              "
-            >
-              3人で対戦
-            </button>
-
-            <button
-              onClick={onShowRules}
-              className="
-                px-6 py-2 rounded-xl font-pirate text-lg
-                bg-navy-700 text-teal-400 border border-teal-600/50
-                hover:bg-teal-600/20 hover:border-teal-400 transition-all duration-75
-              "
-            >
+            <button onClick={onShowRules} className={BACK_BTN + ' text-lg'}>
               ルールを見る
+            </button>
+          </>
+        );
+
+      // ----- Step 2: Choose mode -----
+      case 'mode':
+        return (
+          <>
+            <p className="font-pirate text-xl text-teal-400 mb-6 text-center">
+              {playerCount === 2 ? '2人で遊ぶ' : '3人で遊ぶ'}
+            </p>
+
+            {playerCount === 2 ? (
+              <>
+                <button
+                  onClick={() => goToNames('cpu')}
+                  className="
+                    px-8 py-3 rounded-xl font-pirate text-xl
+                    bg-teal-600 text-navy-900
+                    hover:bg-teal-400 active:scale-95
+                    transition-all duration-200
+                    shadow-[0_0_20px_rgba(45,212,191,0.3)]
+                    mb-3 w-full max-w-xs
+                  "
+                >
+                  人間 vs CPU
+                </button>
+                <button
+                  onClick={() => goToNames('local')}
+                  className="
+                    px-8 py-3 rounded-xl font-pirate text-xl
+                    bg-navy-700 text-teal-400 border border-teal-600/50
+                    hover:bg-teal-600/20 hover:border-teal-400
+                    active:scale-95 transition-all duration-200
+                    mb-4 w-full max-w-xs
+                  "
+                >
+                  人間 vs 人間
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => goToNames('cpu3')}
+                  className="
+                    px-8 py-3 rounded-xl font-pirate text-xl
+                    bg-teal-600 text-navy-900
+                    hover:bg-teal-400 active:scale-95
+                    transition-all duration-200
+                    shadow-[0_0_20px_rgba(45,212,191,0.3)]
+                    mb-3 w-full max-w-xs
+                  "
+                >
+                  人間 2人 + CPU 1人
+                </button>
+                <button
+                  onClick={() => goToNames('local3')}
+                  className="
+                    px-8 py-3 rounded-xl font-pirate text-xl
+                    bg-navy-700 text-yellow-400 border border-yellow-500/50
+                    hover:bg-yellow-600/20 hover:border-yellow-400
+                    active:scale-95 transition-all duration-200
+                    mb-4 w-full max-w-xs
+                  "
+                >
+                  人間 3人
+                </button>
+              </>
+            )}
+
+            <button onClick={() => setStep('count')} className={BACK_BTN}>
+              ← 戻る
+            </button>
+          </>
+        );
+
+      // ----- Step 3: Name inputs -----
+      case 'names':
+        return (
+          <>
+            {selectedMode === 'cpu3' && (
+              <p className="font-pirate text-sm text-teal-400/70 mb-3 text-center">
+                船長3はCPUが操作します
+              </p>
+            )}
+
+            <div className="w-full mb-4 space-y-3">
+              <NameInput value={p1Name} onChange={setP1Name} label="船長1の名前" labelColor="text-teal-400" />
+              {(selectedMode === 'local' || selectedMode === 'cpu3' || selectedMode === 'local3') && (
+                <NameInput value={p2Name} onChange={setP2Name} label="船長2の名前" labelColor="text-ghost-orange" />
+              )}
+              {selectedMode === 'local3' && (
+                <NameInput value={p3Name} onChange={setP3Name} label="船長3の名前" labelColor="text-yellow-400" />
+              )}
+              <p className="text-teal-400/50 text-xs text-center">
+                空欄なら「キャプテン」になるぞ
+              </p>
+            </div>
+
+            <button
+              onClick={handleLaunch}
+              className="
+                px-10 py-4 rounded-xl font-pirate text-2xl
+                bg-teal-600 text-navy-900
+                hover:bg-teal-400 active:scale-95
+                transition-all duration-200
+                shadow-[0_0_30px_rgba(45,212,191,0.4)]
+                animate-glow-pulse mb-3
+              "
+            >
+              出航！
+            </button>
+
+            <button onClick={() => setStep('mode')} className={BACK_BTN}>
+              ← 戻る
             </button>
           </>
         );
