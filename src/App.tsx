@@ -6,6 +6,7 @@ import PlayerArea from './components/PlayerArea';
 import GameLog from './components/GameLog';
 import ChoiceDialog from './components/ChoiceDialog';
 import VictoryScreen from './components/VictoryScreen';
+import ThreePlayerGame from './components/ThreePlayerGame';
 import DiceEffects, { nextEffectId } from './components/DiceEffects';
 import type { DiceEffect } from './components/DiceEffects';
 import type { DieHighlight, GameMode, PlayerId } from './types/game';
@@ -20,9 +21,10 @@ import {
 } from './utils/animateDice';
 
 function App() {
-  const [screen, setScreen] = useState<'title' | 'rule' | 'game'>('title');
+  const [screen, setScreen] = useState<'title' | 'rule' | 'game' | 'game3'>('title');
   const [p1Name, setP1Name] = useState('キャプテン');
   const [p2Name, setP2Name] = useState('');
+  const [p3Name, setP3Name] = useState('');
   const [showEffects, setShowEffects] = useState(false);
   const [showQuitConfirm, setShowQuitConfirm] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -390,8 +392,16 @@ function App() {
     ? computeDiceHighlights(state.player2.currentRoll)
     : undefined;
 
-  const handleStart = useCallback((mode: GameMode, name1: string, name2?: string) => {
+  const handleStart = useCallback((mode: GameMode, name1: string, name2?: string, name3?: string) => {
     setP1Name(name1);
+    if (mode === 'local3') {
+      const n2 = name2 || '船長2';
+      const n3 = name3 || '船長3';
+      setP2Name(n2);
+      setP3Name(n3);
+      setScreen('game3');
+      return;
+    }
     const opponent = name2 ?? randomPirateName();
     setP2Name(opponent);
     restartMatch(mode, name1, opponent);
@@ -404,6 +414,15 @@ function App() {
 
   if (screen === 'rule') {
     return <RuleScreen onBack={() => setScreen('title')} />;
+  }
+
+  if (screen === 'game3') {
+    return (
+      <ThreePlayerGame
+        names={[p1Name, p2Name, p3Name]}
+        onGoToTitle={() => setScreen('title')}
+      />
+    );
   }
 
   const isInstantWin = state.instantWinCondition !== null &&

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { GameMode } from '../types/game';
 
 interface TitleScreenProps {
-  onStart: (mode: GameMode, p1Name: string, p2Name?: string) => void;
+  onStart: (mode: GameMode, p1Name: string, p2Name?: string, p3Name?: string) => void;
   onShowRules: () => void;
 }
 
@@ -54,10 +54,13 @@ function NameInput({ value, onChange, label, labelColor }: {
 export default function TitleScreen({ onStart, onShowRules }: TitleScreenProps) {
   const [p1Name, setP1Name] = useState('');
   const [p2Name, setP2Name] = useState('');
+  const [p3Name, setP3Name] = useState('');
   const [showLocal, setShowLocal] = useState(false);
+  const [showLocal3, setShowLocal3] = useState(false);
 
   const p1Display = toDisplayName(p1Name);
   const p2Display = toDisplayName(p2Name);
+  const p3Display = toDisplayName(p3Name);
 
   return (
     <div className="min-h-[100dvh] bg-navy-900 text-cream flex flex-col items-center justify-center relative overflow-hidden">
@@ -132,6 +135,43 @@ export default function TitleScreen({ onStart, onShowRules }: TitleScreenProps) 
               戻る
             </button>
           </>
+        ) : showLocal3 ? (
+          <>
+            {/* 3P name inputs */}
+            <div className="w-full mb-4 space-y-3">
+              <NameInput value={p1Name} onChange={setP1Name} label="船長1の名前" labelColor="text-teal-400" />
+              <NameInput value={p2Name} onChange={setP2Name} label="船長2の名前" labelColor="text-ghost-orange" />
+              <NameInput value={p3Name} onChange={setP3Name} label="船長3の名前" labelColor="text-yellow-400" />
+              <p className="text-teal-400/50 text-xs text-center">
+                空欄なら「キャプテン」になるぞ
+              </p>
+            </div>
+
+            <button
+              onClick={() => onStart('local3', p1Display, p2Display, p3Display)}
+              className="
+                px-10 py-4 rounded-xl font-pirate text-2xl
+                bg-teal-600 text-navy-900
+                hover:bg-teal-400 active:scale-95
+                transition-all duration-200
+                shadow-[0_0_30px_rgba(45,212,191,0.4)]
+                animate-glow-pulse
+                mb-3
+              "
+            >
+              出航！
+            </button>
+            <button
+              onClick={() => setShowLocal3(false)}
+              className="
+                px-6 py-2 rounded-xl font-pirate text-base
+                bg-navy-700 text-teal-400 border border-teal-600/50
+                hover:bg-teal-600/20 hover:border-teal-400 transition-all duration-75
+              "
+            >
+              戻る
+            </button>
+          </>
         ) : (
           <>
             {/* Name input (for CPU mode) */}
@@ -166,10 +206,24 @@ export default function TitleScreen({ onStart, onShowRules }: TitleScreenProps) 
                 hover:bg-teal-600/20 hover:border-teal-400
                 active:scale-95
                 transition-all duration-200
-                mb-4
+                mb-2
               "
             >
               2人で対戦
+            </button>
+
+            <button
+              onClick={() => setShowLocal3(true)}
+              className="
+                px-10 py-3 rounded-xl font-pirate text-xl
+                bg-navy-700 text-yellow-400 border border-yellow-500/50
+                hover:bg-yellow-600/20 hover:border-yellow-400
+                active:scale-95
+                transition-all duration-200
+                mb-4
+              "
+            >
+              3人で対戦
             </button>
 
             {/* Rules button */}

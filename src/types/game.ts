@@ -1,6 +1,6 @@
 export type DieValue = 1 | 2 | 3 | 4 | 5 | 6;
 
-export type PlayerId = 1 | 2;
+export type PlayerId = 1 | 2 | 3;
 
 export type DieHighlight = 'normal' | 'ghost' | 'push' | 'triple' | 'instant-win';
 
@@ -54,7 +54,7 @@ export interface LogEntry {
   turn: number;
 }
 
-export type GameMode = 'cpu' | 'local';
+export type GameMode = 'cpu' | 'local' | 'local3';
 
 export interface GameState {
   mode: GameMode;
@@ -101,3 +101,43 @@ export interface PlayerController {
   /** Resolve a pending choice. Returns the chosen value, or null if the human should decide via UI. */
   resolveChoice(choice: PendingChoice, state: GameState): string | null;
 }
+
+// ---- 3-Player Mode Types ----
+
+export interface PendingTargetChoice {
+  player: PlayerId;
+  effectType: 'revive' | 'give'; // 4=revive from pool, 6=give own die
+}
+
+export type ThreePlayerPhase =
+  | 'waiting'
+  | 'showing_results'
+  | 'resolving_priority'
+  | 'resolving_choices'
+  | 'round_end'
+  | 'match_end';
+
+export interface ThreePlayerGameState {
+  phase: ThreePlayerPhase;
+  turn: number;
+  round: number;
+  players: [PlayerState, PlayerState, PlayerState];
+  removedPool: number;
+  log: LogEntry[];
+  rolled: [boolean, boolean, boolean];
+  choiceQueue: PendingTargetChoice[];
+  currentChoiceIndex: number;
+  priorityOrder: PlayerId[] | null;
+  winner: PlayerId | null;
+  matchWinner: PlayerId | null;
+  isDraw: boolean;
+}
+
+export type ThreePlayerAction =
+  | { type: 'ROLL_PLAYER'; player: PlayerId }
+  | { type: 'SHOW_RESULTS' }
+  | { type: 'PROCESS_EFFECTS' }
+  | { type: 'ROLL_PRIORITY' }
+  | { type: 'CHOOSE_TARGET'; target: PlayerId }
+  | { type: 'NEXT_ROUND' }
+  | { type: 'RESTART'; names: [string, string, string] };
