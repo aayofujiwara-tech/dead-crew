@@ -11,8 +11,8 @@ import {
 interface ThreePlayerGameProps {
   names: [string, string, string];
   onGoToTitle: () => void;
-  /** Player 3 is CPU */
-  isCpu?: boolean;
+  /** Which players are CPU-controlled */
+  cpuPlayers?: PlayerId[];
 }
 
 /** CPU picks the opponent with the most dice; random on tie */
@@ -36,7 +36,9 @@ function computeHighlights3P(dice: number[]): DieHighlight[] {
   });
 }
 
-export default function ThreePlayerGame({ names, onGoToTitle, isCpu = false }: ThreePlayerGameProps) {
+export default function ThreePlayerGame({ names, onGoToTitle, cpuPlayers = [] }: ThreePlayerGameProps) {
+  const cpuSet = new Set(cpuPlayers);
+  const isCpuPlayer = (id: PlayerId) => cpuSet.has(id);
   const {
     state,
     rollPlayer,
@@ -183,45 +185,53 @@ export default function ThreePlayerGame({ names, onGoToTitle, isCpu = false }: T
   }, [state.phase, state.rolled, handlePlayerRoll]);
 
   // -----------------------------------------------------------------------
-  // CPU auto-roll: after any human rolls and all their dice stop, CPU rolls
+  // CPU auto-roll: after a human rolls and dice stop, CPUs roll with stagger
   // -----------------------------------------------------------------------
   useEffect(() => {
-    if (!isCpu) return;
+    if (cpuSet.size === 0) return;
     if (state.phase !== 'waiting') return;
-    if (state.rolled[2]) return; // P3 (CPU) already rolled
 
     // Need at least one human to have rolled
-    const anyHumanRolled = state.rolled[0] || state.rolled[1];
+    const anyHumanRolled = ([1, 2, 3] as PlayerId[]).some(
+      id => !isCpuPlayer(id) && state.rolled[id - 1],
+    );
     if (!anyHumanRolled) return;
 
-    // Wait for all rolled humans' dice to stop
-    for (let i = 0; i < 2; i++) {
+    // Wait for all rolled players' dice to stop
+    for (let i = 0; i < 3; i++) {
       if (state.rolled[i]) {
         const allStopped = rollingDice[i].length > 0 && rollingDice[i].every(r => !r);
         if (!allStopped) return;
       }
     }
 
-    const timer = setTimeout(() => handlePlayerRoll(3), 500);
-    return () => clearTimeout(timer);
-  }, [isCpu, state.phase, state.rolled, rollingDice, handlePlayerRoll]);
+    // Schedule CPU rolls with stagger
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    const unrolledCpus = cpuPlayers.filter(id => !state.rolled[id - 1]);
+    unrolledCpus.forEach((id, idx) => {
+      const delay = 500 + idx * 300; // 500ms, 800ms, ...
+      timers.push(setTimeout(() => handlePlayerRoll(id), delay));
+    });
+
+    return () => timers.forEach(clearTimeout);
+  }, [cpuPlayers, cpuSet.size, state.phase, state.rolled, rollingDice, handlePlayerRoll]);
 
   // -----------------------------------------------------------------------
   // CPU auto-choose target for choice effects
   // -----------------------------------------------------------------------
   const currentChoice = state.choiceQueue[state.currentChoiceIndex];
-  const isCpuTurn = isCpu && currentChoice?.player === 3;
+  const isCpuTurn = currentChoice != null && isCpuPlayer(currentChoice.player);
 
   useEffect(() => {
-    if (!isCpuTurn) return;
+    if (!isCpuTurn || !currentChoice) return;
     if (state.phase !== 'resolving_choices') return;
 
     const timer = setTimeout(() => {
-      const target = cpuPickTarget(3, state.players);
+      const target = cpuPickTarget(currentChoice.player, state.players);
       chooseTarget(target);
     }, 500);
     return () => clearTimeout(timer);
-  }, [isCpuTurn, state.phase, state.currentChoiceIndex, state.players, chooseTarget]);
+  }, [isCpuTurn, state.phase, state.currentChoiceIndex, state.players, chooseTarget, currentChoice]);
 
   // -----------------------------------------------------------------------
   // Rendering
@@ -250,9 +260,9 @@ export default function ThreePlayerGame({ names, onGoToTitle, isCpu = false }: T
         ).length
     : 0;
 
-  // Roll buttons — P3 can't roll manually in CPU mode
+  // Roll buttons — CPU players can't roll manually
   const canRoll = state.players.map(
-    (_, i) => state.phase === 'waiting' && !state.rolled[i] && !(isCpu && i === 2),
+    (p, i) => state.phase === 'waiting' && !state.rolled[i] && !isCpuPlayer(p.id),
   );
 
   // Unrevealed
@@ -299,6 +309,7 @@ export default function ThreePlayerGame({ names, onGoToTitle, isCpu = false }: T
           highlights={highlights[1]}
           removedChanged={removedChanged}
           inverted
+          isCpu={isCpuPlayer(2)}
           diceIdPrefix="p2-dice"
           unrevealed={unrevealed[1]}
           canRoll={canRoll[1]}
@@ -316,7 +327,7 @@ export default function ThreePlayerGame({ names, onGoToTitle, isCpu = false }: T
           highlights={highlights[2]}
           removedChanged={removedChanged}
           inverted
-          isCpu={isCpu}
+          isCpu={isCpuPlayer(3)}
           diceIdPrefix="p3-dice"
           unrevealed={unrevealed[2]}
           canRoll={canRoll[2]}

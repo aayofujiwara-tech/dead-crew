@@ -54,7 +54,7 @@ export interface LogEntry {
   turn: number;
 }
 
-export type GameMode = 'cpu' | 'local' | 'local3' | 'cpu3';
+export type GameMode = 'cpu' | 'local' | 'local3' | 'cpu3' | 'cpu3x2';
 
 export interface GameState {
   mode: GameMode;

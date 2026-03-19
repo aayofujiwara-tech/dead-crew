@@ -89,6 +89,9 @@ export default function TitleScreen({ onStart, onShowRules }: TitleScreenProps) 
       case 'local':
         onStart('local', p1Display, p2Display);
         break;
+      case 'cpu3x2':
+        onStart('cpu3x2', p1Display);
+        break;
       case 'cpu3':
         onStart('cpu3', p1Display, p2Display);
         break;
@@ -176,13 +179,25 @@ export default function TitleScreen({ onStart, onShowRules }: TitleScreenProps) 
             ) : (
               <>
                 <button
-                  onClick={() => goToNames('cpu3')}
+                  onClick={() => goToNames('cpu3x2')}
                   className="
                     px-8 py-3 rounded-xl font-pirate text-xl
                     bg-teal-600 text-navy-900
                     hover:bg-teal-400 active:scale-95
                     transition-all duration-200
                     shadow-[0_0_20px_rgba(45,212,191,0.3)]
+                    mb-3 w-full max-w-xs
+                  "
+                >
+                  人間 1人 + CPU 2人
+                </button>
+                <button
+                  onClick={() => goToNames('cpu3')}
+                  className="
+                    px-8 py-3 rounded-xl font-pirate text-xl
+                    bg-navy-700 text-teal-400 border border-teal-600/50
+                    hover:bg-teal-600/20 hover:border-teal-400
+                    active:scale-95 transition-all duration-200
                     mb-3 w-full max-w-xs
                   "
                 >
@@ -213,6 +228,11 @@ export default function TitleScreen({ onStart, onShowRules }: TitleScreenProps) 
       case 'names':
         return (
           <>
+            {selectedMode === 'cpu3x2' && (
+              <p className="font-pirate text-sm text-teal-400/70 mb-3 text-center">
+                船長2・船長3はCPUが操作します
+              </p>
+            )}
             {selectedMode === 'cpu3' && (
               <p className="font-pirate text-sm text-teal-400/70 mb-3 text-center">
                 船長3はCPUが操作します
@@ -220,7 +240,7 @@ export default function TitleScreen({ onStart, onShowRules }: TitleScreenProps) 
             )}
 
             <div className="w-full mb-4 space-y-3">
-              <NameInput value={p1Name} onChange={setP1Name} label="船長1の名前" labelColor="text-teal-400" />
+              <NameInput value={p1Name} onChange={setP1Name} label={selectedMode === 'cpu' || selectedMode === 'cpu3x2' ? '船長の名前' : '船長1の名前'} labelColor="text-teal-400" />
               {(selectedMode === 'local' || selectedMode === 'cpu3' || selectedMode === 'local3') && (
                 <NameInput value={p2Name} onChange={setP2Name} label="船長2の名前" labelColor="text-ghost-orange" />
               )}

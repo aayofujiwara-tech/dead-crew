@@ -392,26 +392,29 @@ function App() {
     ? computeDiceHighlights(state.player2.currentRoll)
     : undefined;
 
-  // Track whether the 3-player game is CPU mode
-  const [is3pCpu, setIs3pCpu] = useState(false);
+  // Track which players are CPU in 3-player mode
+  const [cpuPlayers, setCpuPlayers] = useState<PlayerId[]>([]);
 
   const handleStart = useCallback((mode: GameMode, name1: string, name2?: string, name3?: string) => {
     setP1Name(name1);
     if (mode === 'local3') {
-      const n2 = name2 || '船長2';
-      const n3 = name3 || '船長3';
-      setP2Name(n2);
-      setP3Name(n3);
-      setIs3pCpu(false);
+      setP2Name(name2 || '船長2');
+      setP3Name(name3 || '船長3');
+      setCpuPlayers([]);
       setScreen('game3');
       return;
     }
     if (mode === 'cpu3') {
-      const n2 = name2 || '船長2';
-      const n3 = randomPirateName();
-      setP2Name(n2);
-      setP3Name(n3);
-      setIs3pCpu(true);
+      setP2Name(name2 || '船長2');
+      setP3Name(randomPirateName());
+      setCpuPlayers([3]);
+      setScreen('game3');
+      return;
+    }
+    if (mode === 'cpu3x2') {
+      setP2Name(randomPirateName());
+      setP3Name(randomPirateName());
+      setCpuPlayers([2, 3]);
       setScreen('game3');
       return;
     }
@@ -434,7 +437,7 @@ function App() {
       <ThreePlayerGame
         names={[p1Name, p2Name, p3Name]}
         onGoToTitle={() => setScreen('title')}
-        isCpu={is3pCpu}
+        cpuPlayers={cpuPlayers}
       />
     );
   }
