@@ -220,18 +220,51 @@ export default function ThreePlayerGame({ names, onGoToTitle, cpuPlayers = [] }:
   // CPU auto-choose target for choice effects
   // -----------------------------------------------------------------------
   const currentChoice = state.choiceQueue[state.currentChoiceIndex];
-  const isCpuTurn = currentChoice != null && isCpuPlayer(currentChoice.player);
+  // Only treat as CPU choice turn during resolving_choices (NOT during resolving_priority)
+  const isCpuChoiceTurn =
+    currentChoice != null &&
+    isCpuPlayer(currentChoice.player) &&
+    state.phase === 'resolving_choices';
+  // Check if all players with pending choices are CPUs (for auto-priority)
+  const allChoicersAreCpu =
+    cpuSet.size > 0 &&
+    state.choiceQueue.length > 0 &&
+    [...new Set(state.choiceQueue.map(c => c.player))].every(id => isCpuPlayer(id));
+  const isCpuPriority = state.phase === 'resolving_priority' && allChoicersAreCpu;
 
   useEffect(() => {
-    if (!isCpuTurn || !currentChoice) return;
-    if (state.phase !== 'resolving_choices') return;
+    if (!isCpuChoiceTurn || !currentChoice) return;
 
     const timer = setTimeout(() => {
       const target = cpuPickTarget(currentChoice.player, state.players);
       chooseTarget(target);
     }, 500);
     return () => clearTimeout(timer);
-  }, [isCpuTurn, state.phase, state.currentChoiceIndex, state.players, chooseTarget, currentChoice]);
+  }, [isCpuChoiceTurn, state.currentChoiceIndex, state.players, chooseTarget, currentChoice]);
+
+  // -----------------------------------------------------------------------
+  // CPU auto-priority roll (when all players with choices are CPUs)
+  // Uses state.log.length as dep to re-fire on tie (tie adds logs but keeps same phase/queue)
+  // -----------------------------------------------------------------------
+  useEffect(() => {
+    if (!isCpuPriority) return;
+
+    const timer = setTimeout(() => rollPriority(), 700);
+    return () => clearTimeout(timer);
+  }, [isCpuPriority, rollPriority, state.log.length]);
+
+  // -----------------------------------------------------------------------
+  // Fallback: force CPU choice if resolving_choices is stuck for 2 seconds
+  // -----------------------------------------------------------------------
+  useEffect(() => {
+    if (!isCpuChoiceTurn || !currentChoice) return;
+
+    const fallback = setTimeout(() => {
+      const target = cpuPickTarget(currentChoice.player, state.players);
+      chooseTarget(target);
+    }, 2000);
+    return () => clearTimeout(fallback);
+  }, [isCpuChoiceTurn, state.currentChoiceIndex, state.players, chooseTarget, currentChoice]);
 
   // -----------------------------------------------------------------------
   // Rendering
@@ -245,9 +278,9 @@ export default function ThreePlayerGame({ names, onGoToTitle, cpuPlayers = [] }:
     showEffects ? computeHighlights3P(p.currentRoll) : undefined,
   );
 
-  // Current choice info — currentChoice and isCpuTurn declared above
+  // Current choice info — currentChoice and isCpuChoiceTurn declared above
   const showTargetDialog =
-    state.phase === 'resolving_choices' && currentChoice != null && !isCpuTurn;
+    state.phase === 'resolving_choices' && currentChoice != null && !isCpuChoiceTurn;
 
   // Count remaining choices of same type for same player
   const choiceRemaining = currentChoice
@@ -389,9 +422,9 @@ export default function ThreePlayerGame({ names, onGoToTitle, cpuPlayers = [] }:
 
         {/* Priority roll button / CPU choosing indicator */}
         <div className="flex justify-center h-[28px] items-center">
-          {isCpuTurn ? (
+          {isCpuPriority ? (
             <div className="px-4 py-1 rounded-lg font-pirate text-base text-ghost-orange animate-pulse">
-              CPUが選択中...
+              CPUが優先度を決定中...
             </div>
           ) : state.phase === 'resolving_priority' ? (
             <button
@@ -404,6 +437,10 @@ export default function ThreePlayerGame({ names, onGoToTitle, cpuPlayers = [] }:
             >
               優先度ダイスを振る！
             </button>
+          ) : isCpuChoiceTurn ? (
+            <div className="px-4 py-1 rounded-lg font-pirate text-base text-ghost-orange animate-pulse">
+              CPUが選択中...
+            </div>
           ) : null}
         </div>
       </div>
