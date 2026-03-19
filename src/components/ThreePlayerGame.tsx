@@ -61,6 +61,7 @@ export default function ThreePlayerGame({ names, onGoToTitle, cpuPlayers = [] }:
     rollPlayer,
     showResults,
     processEffects,
+    setupChoices,
     rollPriority,
     chooseTarget,
     nextRound,
@@ -168,11 +169,14 @@ export default function ThreePlayerGame({ names, onGoToTitle, cpuPlayers = [] }:
   }, [state.phase]);
 
   // -----------------------------------------------------------------------
-  // Handle animation when effects are being processed
-  // (1s are already applied in state by PROCESS_EFFECTS, but we animate beforehand)
+  // After 1s are applied (ones_applied phase), wait for animation then setup choices
   // -----------------------------------------------------------------------
-  // We animate the 1s removal in the showing_results → process_effects transition.
-  // Since PROCESS_EFFECTS handles 1s in the reducer, we show highlights during showing_results.
+  useEffect(() => {
+    if (state.phase !== 'ones_applied') return;
+
+    const timer = setTimeout(() => setupChoices(), 600);
+    return () => clearTimeout(timer);
+  }, [state.phase, setupChoices]);
 
   // -----------------------------------------------------------------------
   // Clear state on round/match end

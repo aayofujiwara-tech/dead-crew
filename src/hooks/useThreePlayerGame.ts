@@ -151,7 +151,7 @@ function reducer(state: ThreePlayerGameState, action: ThreePlayerAction): ThreeP
     }
 
     case 'PROCESS_EFFECTS': {
-      // Step 1: Apply 1s — remove to pool
+      // Apply 1s only — remove to pool, then pause for animation
       const newPlayers = state.players.map(p => ({ ...p })) as [PlayerState, PlayerState, PlayerState];
       let pool = state.removedPool;
       const logs: string[] = [];
@@ -168,13 +168,24 @@ function reducer(state: ThreePlayerGameState, action: ThreePlayerAction): ThreeP
       let s: ThreePlayerGameState = { ...state, players: newPlayers, removedPool: pool };
       s = addLogs(s, logs);
 
-      // Step 2: Collect choice effects (4s and 6s)
+      // Check if 1s alone ended the round
+      const zeroPlayers = newPlayers.filter(p => p.diceCount <= 0);
+      if (zeroPlayers.length > 0) {
+        return checkRoundEnd(s);
+      }
+
+      // Pause in ones_applied so UI can animate the removal before choices
+      return { ...s, phase: 'ones_applied' };
+    }
+
+    case 'SETUP_CHOICES': {
+      // Collect choice effects (4s and 6s) from the current roll
       const choiceQueue: PendingTargetChoice[] = [];
       const playersWithChoices = new Set<PlayerId>();
 
       for (let i = 0; i < 3; i++) {
         const pid = (i + 1) as PlayerId;
-        const roll = newPlayers[i].currentRoll;
+        const roll = state.players[i].currentRoll;
 
         const fours = roll.filter(d => d === 4).length;
         for (let j = 0; j < fours; j++) {
@@ -192,17 +203,17 @@ function reducer(state: ThreePlayerGameState, action: ThreePlayerAction): ThreeP
       }
 
       if (choiceQueue.length === 0) {
-        return checkRoundEnd(s);
+        return checkRoundEnd(state);
       }
 
-      s = { ...s, choiceQueue, currentChoiceIndex: 0 };
+      let s: ThreePlayerGameState = { ...state, choiceQueue, currentChoiceIndex: 0 };
 
       if (playersWithChoices.size > 1) {
         return { ...s, phase: 'resolving_priority' };
       }
 
       // Single player with choices — skip empty revives from start
-      const { state: s2, nextIndex } = skipEmptyRevives(s, 0, pool);
+      const { state: s2, nextIndex } = skipEmptyRevives(s, 0, state.removedPool);
       if (nextIndex >= choiceQueue.length) {
         return checkRoundEnd(s2);
       }
@@ -367,6 +378,10 @@ export function useThreePlayerGame(names: [string, string, string]) {
     dispatch({ type: 'PROCESS_EFFECTS' });
   }, []);
 
+  const setupChoices = useCallback(() => {
+    dispatch({ type: 'SETUP_CHOICES' });
+  }, []);
+
   const rollPriority = useCallback(() => {
     dispatch({ type: 'ROLL_PRIORITY' });
   }, []);
@@ -388,6 +403,7 @@ export function useThreePlayerGame(names: [string, string, string]) {
     rollPlayer,
     showResults,
     processEffects,
+    setupChoices,
     rollPriority,
     chooseTarget,
     nextRound,

@@ -112,6 +112,7 @@ export interface PendingTargetChoice {
 export type ThreePlayerPhase =
   | 'waiting'
   | 'showing_results'
+  | 'ones_applied'
   | 'resolving_priority'
   | 'resolving_choices'
   | 'round_end'
@@ -137,6 +138,7 @@ export type ThreePlayerAction =
   | { type: 'ROLL_PLAYER'; player: PlayerId }
   | { type: 'SHOW_RESULTS' }
   | { type: 'PROCESS_EFFECTS' }
+  | { type: 'SETUP_CHOICES' }
   | { type: 'ROLL_PRIORITY' }
   | { type: 'CHOOSE_TARGET'; target: PlayerId }
   | { type: 'NEXT_ROUND' }
