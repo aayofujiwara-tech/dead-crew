@@ -15,15 +15,32 @@ interface ThreePlayerGameProps {
   cpuPlayers?: PlayerId[];
 }
 
-/** CPU picks the opponent with the most dice; random on tie */
+/**
+ * CPU target selection strategy per effect type:
+ *   - 'give' (6): give own die to opponent with MOST dice (lower counter-attack risk)
+ *   - 'revive' (4): push pool dice onto opponent with FEWEST dice (sabotage the leader)
+ * Ties: random.
+ * Future: could also factor in match score to prioritise eliminating near-win opponents.
+ */
 function cpuPickTarget(
   actorId: PlayerId,
   players: readonly [{ id: PlayerId; diceCount: number }, { id: PlayerId; diceCount: number }, { id: PlayerId; diceCount: number }],
+  effectType: 'revive' | 'give',
 ): PlayerId {
   const opponents = players.filter(p => p.id !== actorId);
-  if (opponents[0].diceCount > opponents[1].diceCount) return opponents[0].id;
-  if (opponents[1].diceCount > opponents[0].diceCount) return opponents[1].id;
-  return Math.random() < 0.5 ? opponents[0].id : opponents[1].id;
+  const [a, b] = opponents;
+
+  if (effectType === 'revive') {
+    // 4: sabotage — push pool dice onto the opponent closest to winning (fewest dice)
+    if (a.diceCount < b.diceCount) return a.id;
+    if (b.diceCount < a.diceCount) return b.id;
+  } else {
+    // 6: offload — give die to opponent with most dice (safer target)
+    if (a.diceCount > b.diceCount) return a.id;
+    if (b.diceCount > a.diceCount) return b.id;
+  }
+
+  return Math.random() < 0.5 ? a.id : b.id;
 }
 
 /** Compute dice highlights for 3-player mode: 1=ghost, 4=triple(teal), 6=push(orange) */
@@ -236,7 +253,7 @@ export default function ThreePlayerGame({ names, onGoToTitle, cpuPlayers = [] }:
     if (!isCpuChoiceTurn || !currentChoice) return;
 
     const timer = setTimeout(() => {
-      const target = cpuPickTarget(currentChoice.player, state.players);
+      const target = cpuPickTarget(currentChoice.player, state.players, currentChoice.effectType);
       chooseTarget(target);
     }, 500);
     return () => clearTimeout(timer);
@@ -260,7 +277,7 @@ export default function ThreePlayerGame({ names, onGoToTitle, cpuPlayers = [] }:
     if (!isCpuChoiceTurn || !currentChoice) return;
 
     const fallback = setTimeout(() => {
-      const target = cpuPickTarget(currentChoice.player, state.players);
+      const target = cpuPickTarget(currentChoice.player, state.players, currentChoice.effectType);
       chooseTarget(target);
     }, 2000);
     return () => clearTimeout(fallback);
