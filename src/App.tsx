@@ -647,7 +647,7 @@ function App() {
           winnerName={state.matchWinner ? getPlayerName(state.matchWinner) : ''}
           onNext={() => {
             const isCpu = state.mode === 'cpu';
-            restartMatch(undefined, p1Name, isCpu ? randomPirateName() : p2Name);
+            restartMatch(state.mode, p1Name, isCpu ? randomPirateName() : p2Name);
           }}
           onGoToTitle={handleGoToTitle}
           isInstantWin={isInstantWin}

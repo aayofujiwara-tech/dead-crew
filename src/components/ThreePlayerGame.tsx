@@ -78,6 +78,14 @@ export default function ThreePlayerGame({ names, onGoToTitle, cpuPlayers = [] }:
   const stopTimersRef = useRef<ReturnType<typeof setTimeout>[][]>([[], [], []]);
   const advancedRef = useRef(false);
 
+  // Clean up all stop timers on unmount to prevent memory leaks
+  useEffect(() => {
+    const ref = stopTimersRef;
+    return () => {
+      ref.current.forEach(arr => arr.forEach(clearTimeout));
+    };
+  }, []);
+
   // Track removed pool changes for bounce animation
   useEffect(() => {
     if (state.removedPool !== prevRemovedRef.current) {
@@ -112,11 +120,13 @@ export default function ThreePlayerGame({ names, onGoToTitle, cpuPlayers = [] }:
 
     rollPlayer(player);
 
-    // Staggered dice stop
+    // Staggered dice stop — use functional updater to avoid stale rollingDice closure
     const diceCount = state.players[idx].diceCount;
-    const newRolling = [...rollingDice] as [boolean[], boolean[], boolean[]];
-    newRolling[idx] = Array(diceCount).fill(true);
-    setRollingDice(newRolling);
+    setRollingDice(prev => {
+      const next = [...prev] as [boolean[], boolean[], boolean[]];
+      next[idx] = Array(diceCount).fill(true);
+      return next;
+    });
 
     // Clear existing timers
     stopTimersRef.current[idx].forEach(clearTimeout);
@@ -135,7 +145,7 @@ export default function ThreePlayerGame({ names, onGoToTitle, cpuPlayers = [] }:
       }, delay);
       stopTimersRef.current[idx].push(timer);
     }
-  }, [state.phase, state.rolled, state.players, rollPlayer, rollingDice]);
+  }, [state.phase, state.rolled, state.players, rollPlayer]);
 
   // -----------------------------------------------------------------------
   // Detect all players rolled AND all dice stopped → advance
@@ -170,12 +180,17 @@ export default function ThreePlayerGame({ names, onGoToTitle, cpuPlayers = [] }:
 
   // -----------------------------------------------------------------------
   // After 1s are applied (ones_applied phase), wait for animation then setup choices
+  // Primary timer at 600ms; fallback at 2s if primary somehow fails
   // -----------------------------------------------------------------------
   useEffect(() => {
     if (state.phase !== 'ones_applied') return;
 
     const timer = setTimeout(() => setupChoices(), 600);
-    return () => clearTimeout(timer);
+    const fallback = setTimeout(() => setupChoices(), 2000);
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(fallback);
+    };
   }, [state.phase, setupChoices]);
 
   // -----------------------------------------------------------------------
@@ -253,14 +268,33 @@ export default function ThreePlayerGame({ names, onGoToTitle, cpuPlayers = [] }:
     [...new Set(state.choiceQueue.map(c => c.player))].every(id => isCpuPlayer(id));
   const isCpuPriority = state.phase === 'resolving_priority' && allChoicersAreCpu;
 
+  // Single CPU auto-choose effect with 500ms primary + 2s fallback.
+  // Using a ref to prevent double-dispatch from racing timers.
+  const cpuChoiceDispatchedRef = useRef(-1);
+
   useEffect(() => {
     if (!isCpuChoiceTurn || !currentChoice) return;
 
-    const timer = setTimeout(() => {
+    const choiceIdx = state.currentChoiceIndex;
+
+    const primary = setTimeout(() => {
+      if (cpuChoiceDispatchedRef.current === choiceIdx) return;
+      cpuChoiceDispatchedRef.current = choiceIdx;
       const target = cpuPickTarget(currentChoice.player, state.players, currentChoice.effectType);
       chooseTarget(target);
     }, 500);
-    return () => clearTimeout(timer);
+
+    const fallback = setTimeout(() => {
+      if (cpuChoiceDispatchedRef.current === choiceIdx) return;
+      cpuChoiceDispatchedRef.current = choiceIdx;
+      const target = cpuPickTarget(currentChoice.player, state.players, currentChoice.effectType);
+      chooseTarget(target);
+    }, 2000);
+
+    return () => {
+      clearTimeout(primary);
+      clearTimeout(fallback);
+    };
   }, [isCpuChoiceTurn, state.currentChoiceIndex, state.players, chooseTarget, currentChoice]);
 
   // -----------------------------------------------------------------------
@@ -273,19 +307,6 @@ export default function ThreePlayerGame({ names, onGoToTitle, cpuPlayers = [] }:
     const timer = setTimeout(() => rollPriority(), 700);
     return () => clearTimeout(timer);
   }, [isCpuPriority, rollPriority, state.log.length]);
-
-  // -----------------------------------------------------------------------
-  // Fallback: force CPU choice if resolving_choices is stuck for 2 seconds
-  // -----------------------------------------------------------------------
-  useEffect(() => {
-    if (!isCpuChoiceTurn || !currentChoice) return;
-
-    const fallback = setTimeout(() => {
-      const target = cpuPickTarget(currentChoice.player, state.players, currentChoice.effectType);
-      chooseTarget(target);
-    }, 2000);
-    return () => clearTimeout(fallback);
-  }, [isCpuChoiceTurn, state.currentChoiceIndex, state.players, chooseTarget, currentChoice]);
 
   // -----------------------------------------------------------------------
   // Rendering
