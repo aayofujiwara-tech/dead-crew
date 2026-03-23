@@ -28,7 +28,7 @@ function createInitialPlayer(id: PlayerId, name?: string): PlayerState {
   };
 }
 
-function createInitialState(mode: GameMode = 'local', p1Name?: string, p2Name?: string): GameState {
+export function createInitialState(mode: GameMode = 'local', p1Name?: string, p2Name?: string): GameState {
   resetLogCounter();
   return {
     mode,
@@ -60,7 +60,7 @@ function addLogs(state: GameState, messages: string[]): GameState {
   return { ...state, log: [...state.log, ...newLogs] };
 }
 
-function gameReducer(state: GameState, action: GameAction): GameState {
+export function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     // Legacy: simultaneous roll (kept for compatibility)
     case 'ROLL_DICE': {

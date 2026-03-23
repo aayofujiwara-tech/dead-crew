@@ -1,44 +1,53 @@
 import { useCallback, useState, useEffect, useRef } from 'react';
-import { useGameState } from './hooks/useGameState';
-import TitleScreen from './components/TitleScreen';
-import RuleScreen from './components/RuleScreen';
-import PlayerArea from './components/PlayerArea';
-import GameLog from './components/GameLog';
-import ChoiceDialog from './components/ChoiceDialog';
-import VictoryScreen from './components/VictoryScreen';
-import ThreePlayerGame from './components/ThreePlayerGame';
-import OnlineLobby from './components/OnlineLobby';
-import OnlineGame from './components/OnlineGame';
-import DiceEffects, { nextEffectId } from './components/DiceEffects';
-import type { DiceEffect } from './components/DiceEffects';
-import type { DieHighlight, GameMode, PlayerId } from './types/game';
-import { computeDiceHighlights } from './utils/dice';
-import { randomPirateName } from './utils/pirateNames';
-import { cpuController } from './controllers/playerControllers';
+import { useOnlineGame } from '../hooks/useOnlineGame';
+import type { OnlineRole } from '../hooks/useOnlineGame';
+import PlayerArea from './PlayerArea';
+import GameLog from './GameLog';
+import ChoiceDialog from './ChoiceDialog';
+import VictoryScreen from './VictoryScreen';
+import DiceEffects, { nextEffectId } from './DiceEffects';
+import type { DiceEffect } from './DiceEffects';
+import type { DieHighlight } from '../types/game';
+import { computeDiceHighlights } from '../utils/dice';
 import {
   animateDiceRemove,
   animateDiceTransferOut,
   resetDiceStyles,
   waitForHighlightPaint,
-} from './utils/animateDice';
+} from '../utils/animateDice';
 
-function App() {
-  const [screen, setScreen] = useState<'title' | 'rule' | 'game' | 'game3' | 'online_lobby' | 'online_game'>('title');
-  const [p1Name, setP1Name] = useState('キャプテン');
-  const [p2Name, setP2Name] = useState('');
-  const [p3Name, setP3Name] = useState('');
-  // Online game parameters
-  const [onlineRoomCode, setOnlineRoomCode] = useState('');
-  const [onlineRole, setOnlineRole] = useState<'host' | 'guest'>('host');
-  const [onlineMyName, setOnlineMyName] = useState('');
-  const [onlineOpponentName, setOnlineOpponentName] = useState('');
+interface OnlineGameProps {
+  roomCode: string;
+  role: OnlineRole;
+  myName: string;
+  opponentName: string;
+  onGoToTitle: () => void;
+}
 
+export default function OnlineGame({
+  roomCode,
+  role,
+  myName,
+  opponentName,
+  onGoToTitle,
+}: OnlineGameProps) {
+  const {
+    state,
+    isHost,
+    connected,
+    opponentDisconnected,
+    roll,
+    makeChoice,
+    rollPriority,
+    nextRound,
+    restartMatch,
+  } = useOnlineGame(roomCode, role, myName, opponentName);
+
+  const containerRef = useRef<HTMLDivElement>(null);
   const [showEffects, setShowEffects] = useState(false);
   const [showQuitConfirm, setShowQuitConfirm] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
   const [removedChanged, setRemovedChanged] = useState(false);
   const [diceEffects, setDiceEffects] = useState<DiceEffect[]>([]);
-  // Incoming dice counts for slide-in animation
   const [p1Incoming, setP1Incoming] = useState(0);
   const [p2Incoming, setP2Incoming] = useState(0);
   const prevRemovedRef = useRef(0);
@@ -46,7 +55,7 @@ function App() {
 
   // Special effect announcement overlay
   const [specialAnnouncement, setSpecialAnnouncement] = useState<string | null>(null);
-  const announcementShownTurnRef = useRef<number>(-1);
+  const announcementShownTurnRef = useRef(-1);
   const announcementTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Per-die rolling state for staggered stop animation
@@ -54,20 +63,14 @@ function App() {
   const [p2RollingDice, setP2RollingDice] = useState<boolean[]>([]);
   const p1StopTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const p2StopTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
-  // Track whether the "both rolled" advance has fired for this turn
-  const advancedRef = useRef(false);
 
-  const {
-    state,
-    rollPlayer,
-    showResults,
-    checkInstantWin,
-    rollPriority,
-    makeChoice,
-    resolveNormal,
-    nextRound,
-    restartMatch,
-  } = useGameState();
+  // In online mode, both players are "me" at bottom, "opponent" at top.
+  // If host: p1 is bottom, p2 is top
+  // If guest: p2 is bottom, p1 is top
+  const myPlayer = isHost ? state.player1 : state.player2;
+  const oppPlayer = isHost ? state.player2 : state.player1;
+  const myPrefix = isHost ? 'p1-dice' : 'p2-dice';
+  const oppPrefix = isHost ? 'p2-dice' : 'p1-dice';
 
   // Track removed pool changes for bounce animation
   useEffect(() => {
@@ -80,118 +83,73 @@ function App() {
   }, [state.removedPool]);
 
   // ---------------------------------------------------------------------------
-  // Individual roll handler
+  // Detect when both rolled → trigger dice spinning animation
   // ---------------------------------------------------------------------------
-  const handlePlayerRoll = useCallback((player: PlayerId) => {
-    if (state.phase !== 'waiting') return;
-    if (player === 1 && state.p1Rolled) return;
-    if (player === 2 && state.p2Rolled) return;
+  const lastAnimatedTurnRef = useRef(-1);
+  useEffect(() => {
+    if (!state.p1Rolled || !state.p2Rolled) return;
+    if (lastAnimatedTurnRef.current === state.turn) return;
+    lastAnimatedTurnRef.current = state.turn;
 
-    // First roll of the turn — clear stale state from previous turn
-    const isFirstRoll = !state.p1Rolled && !state.p2Rolled;
-    if (isFirstRoll) {
-      setShowEffects(false);
-      setP1Incoming(0);
-      setP2Incoming(0);
-      advancedRef.current = false;
-    }
+    // Clear stale state
+    setShowEffects(false);
+    setP1Incoming(0);
+    setP2Incoming(0);
 
-    // Screen shake via direct DOM class toggle — avoids re-rendering entire tree
+    // Screen shake
     const el = containerRef.current;
     if (el) {
       el.classList.remove('animate-screen-shake');
-      // Force reflow so removing + re-adding the class restarts the animation
       void el.offsetWidth;
       el.classList.add('animate-screen-shake');
     }
 
-    // Dispatch roll — generates dice values in state
-    rollPlayer(player);
+    // Start dice animation for both players
+    const startAnim = (count: number, setRolling: typeof setP1RollingDice, timers: typeof p1StopTimersRef) => {
+      setRolling(Array(count).fill(true));
+      timers.current.forEach(clearTimeout);
+      timers.current = [];
+      for (let i = 0; i < count; i++) {
+        const delay = 200 + Math.random() * 400;
+        const timer = setTimeout(() => {
+          setRolling(prev => {
+            const next = [...prev];
+            next[i] = false;
+            return next;
+          });
+        }, delay);
+        timers.current.push(timer);
+      }
+    };
 
-    // Start staggered dice stop animation
-    const diceCount = player === 1 ? state.player1.diceCount : state.player2.diceCount;
-    const setRollingDice = player === 1 ? setP1RollingDice : setP2RollingDice;
-    const timersRef = player === 1 ? p1StopTimersRef : p2StopTimersRef;
-
-    // All dice start spinning
-    setRollingDice(Array(diceCount).fill(true));
-
-    // Clear any existing timers
-    timersRef.current.forEach(clearTimeout);
-    timersRef.current = [];
-
-    // Generate random stop times (200–600ms), each die stops independently
-    for (let i = 0; i < diceCount; i++) {
-      const delay = 200 + Math.random() * 400;
-      const timer = setTimeout(() => {
-        setRollingDice(prev => {
-          const next = [...prev];
-          next[i] = false;
-          return next;
-        });
-      }, delay);
-      timersRef.current.push(timer);
-    }
-  }, [state.phase, state.p1Rolled, state.p2Rolled, state.player1.diceCount, state.player2.diceCount, rollPlayer]);
+    startAnim(state.player1.diceCount, setP1RollingDice, p1StopTimersRef);
+    startAnim(state.player2.diceCount, setP2RollingDice, p2StopTimersRef);
+  }, [state.p1Rolled, state.p2Rolled, state.turn, state.player1.diceCount, state.player2.diceCount]);
 
   // ---------------------------------------------------------------------------
-  // Detect when both players have rolled AND all dice have stopped
-  // → advance to SHOW_RESULTS → CHECK_INSTANT_WIN
+  // My roll button handler
   // ---------------------------------------------------------------------------
-  useEffect(() => {
+  const handleMyRoll = useCallback(() => {
     if (state.phase !== 'waiting') return;
-    if (!state.p1Rolled || !state.p2Rolled) return;
-    if (advancedRef.current) return;
+    const myRolled = isHost ? state.p1Rolled : state.p2Rolled;
+    if (myRolled) return;
+    roll();
+  }, [state.phase, state.p1Rolled, state.p2Rolled, isHost, roll]);
 
-    const p1AllStopped = p1RollingDice.length > 0 && p1RollingDice.every(r => !r);
-    const p2AllStopped = p2RollingDice.length > 0 && p2RollingDice.every(r => !r);
-
-    if (p1AllStopped && p2AllStopped) {
-      advancedRef.current = true;
-      // Brief pause to let the user see final dice, then advance
-      setTimeout(() => {
-        showResults();
-        setTimeout(() => checkInstantWin(), 500);
-      }, 300);
-    }
-  }, [state.phase, state.p1Rolled, state.p2Rolled, p1RollingDice, p2RollingDice, showResults, checkInstantWin]);
-
-  // ---------------------------------------------------------------------------
-  // CPU auto-roll: after P1 rolls and all P1 dice stop, CPU rolls after 500ms
-  // ---------------------------------------------------------------------------
-  const isCpuMode = state.mode === 'cpu';
-
-  useEffect(() => {
-    if (!isCpuMode) return;
-    if (state.phase !== 'waiting') return;
-    if (!state.p1Rolled || state.p2Rolled) return;
-
-    // Wait for P1 dice to finish stopping
-    const p1AllStopped = p1RollingDice.length > 0 && p1RollingDice.every(r => !r);
-    if (!p1AllStopped) return;
-
-    const timer = setTimeout(() => handlePlayerRoll(2), 500);
-    return () => clearTimeout(timer);
-  }, [isCpuMode, state.phase, state.p1Rolled, state.p2Rolled, p1RollingDice, handlePlayerRoll]);
-
-  // ---------------------------------------------------------------------------
-  // Spacebar shortcut: rolls P1
-  // ---------------------------------------------------------------------------
+  // Spacebar shortcut
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.code === 'Space') {
         e.preventDefault();
-        if (state.phase === 'waiting' && !state.p1Rolled) {
-          handlePlayerRoll(1);
-        }
+        handleMyRoll();
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [state.phase, state.p1Rolled, handlePlayerRoll]);
+  }, [handleMyRoll]);
 
   // ---------------------------------------------------------------------------
-  // Resolving normal effects (1s and 6s animation)
+  // Resolving normal effects animation
   // ---------------------------------------------------------------------------
   useEffect(() => {
     if (state.phase !== 'resolving_normal') return;
@@ -205,14 +163,11 @@ function App() {
     const hasOnes = p1Roll.some(d => d === 1) || p2Roll.some(d => d === 1);
     const hasSixes = p1SixCount > 0 || p2SixCount > 0;
 
-    // Show colored highlights on 1s and 6s
     setShowEffects(true);
 
-    // No special dice — resolve immediately
     if (!hasOnes && !hasSixes) {
       animatingRef.current = false;
       resetDiceStyles();
-      resolveNormal();
       setP1RollingDice([]);
       setP2RollingDice([]);
       return;
@@ -222,7 +177,6 @@ function App() {
       try {
         await waitForHighlightPaint();
 
-        // Step 1: Animate 1s (ghost/remove) — all in parallel
         const ghostPromises: Promise<void>[] = [];
         p1Roll.forEach((d, i) => {
           if (d === 1) ghostPromises.push(animateDiceRemove(`p1-dice-${i}`));
@@ -230,11 +184,8 @@ function App() {
         p2Roll.forEach((d, i) => {
           if (d === 1) ghostPromises.push(animateDiceRemove(`p2-dice-${i}`));
         });
-        if (ghostPromises.length > 0) {
-          await Promise.all(ghostPromises);
-        }
+        if (ghostPromises.length > 0) await Promise.all(ghostPromises);
 
-        // Step 2: Animate 6s (slide out toward center) — all in parallel
         const transferPromises: Promise<void>[] = [];
         p1Roll.forEach((d, i) => {
           if (d === 6) transferPromises.push(animateDiceTransferOut(`p1-dice-${i}`, 'up'));
@@ -242,20 +193,11 @@ function App() {
         p2Roll.forEach((d, i) => {
           if (d === 6) transferPromises.push(animateDiceTransferOut(`p2-dice-${i}`, 'down'));
         });
-        if (transferPromises.length > 0) {
-          await Promise.all(transferPromises);
-        }
+        if (transferPromises.length > 0) await Promise.all(transferPromises);
 
-        // Step 3: Show incoming dice BEFORE resolving state
         if (p1SixCount > 0) setP2Incoming(p1SixCount);
         if (p2SixCount > 0) setP1Incoming(p2SixCount);
 
-        // Step 4: Update state (diceCount changes, phase → waiting)
-        resolveNormal();
-
-        // Step 5: Clean up — remove WAAPI placeholders and inline styles before
-        // React re-renders with new dice. Also clear incoming/rolling state so
-        // stale indicators don't persist into the next waiting phase.
         resetDiceStyles();
         setP1Incoming(0);
         setP2Incoming(0);
@@ -268,20 +210,17 @@ function App() {
 
     run();
 
-    // Fallback: if animation takes too long, force resolve
     const fallback = setTimeout(() => {
       if (animatingRef.current) {
         animatingRef.current = false;
         setP1Incoming(0);
         setP2Incoming(0);
-        resolveNormal();
       }
     }, 1200);
-
     return () => clearTimeout(fallback);
-  }, [state.phase, state.turn, state.player1.currentRoll, state.player2.currentRoll, resolveNormal]);
+  }, [state.phase, state.turn, state.player1.currentRoll, state.player2.currentRoll]);
 
-  // Clear incoming dice indicators when the round/match ends
+  // Clear incoming dice on round/match end
   useEffect(() => {
     if (state.phase === 'round_end' || state.phase === 'match_end') {
       setP1Incoming(0);
@@ -308,29 +247,23 @@ function App() {
     announcementShownTurnRef.current = state.turn;
 
     const effectLabels: Record<string, string> = {
-      swap_all: '👻 2×3 入れ替え発動！',
-      add_removed_3: '💀 3×3 呪い発動！除外済み3個が相手に！',
-      add_removed_4: '⚓ 4×3 大呪い発動！除外済み4個が相手に！',
-      five_choice: '🏴‍☠️ 5×3 選択発動！',
+      swap_all: '2×3 入れ替え発動！',
+      add_removed_3: '3×3 呪い発動！除外済み3個が相手に！',
+      add_removed_4: '4×3 大呪い発動！除外済み4個が相手に！',
+      five_choice: '5×3 選択発動！',
     };
 
-    const texts = state.pendingChoices
-      .map(c => effectLabels[c.effect.type])
-      .filter(Boolean);
+    const texts = state.pendingChoices.map(c => effectLabels[c.effect.type]).filter(Boolean);
     if (texts.length === 0) return;
 
-    // Clear any existing timer before starting a new one
     if (announcementTimerRef.current) clearTimeout(announcementTimerRef.current);
-
     setSpecialAnnouncement(texts.join('\n'));
     announcementTimerRef.current = setTimeout(() => {
       setSpecialAnnouncement(null);
       announcementTimerRef.current = null;
     }, 1500);
-    // Do NOT return cleanup — the timer must survive re-renders from dependency changes
   }, [state.phase, state.turn, state.pendingChoices]);
 
-  // Force-clear announcement when phase returns to waiting or round/match ends
   useEffect(() => {
     if (state.phase === 'waiting' || state.phase === 'resolving_normal' || state.phase === 'round_end' || state.phase === 'match_end') {
       if (announcementTimerRef.current) {
@@ -364,35 +297,19 @@ function App() {
   }, [makeChoice, state.pendingChoices, state.currentChoiceIndex, state.removedPool]);
 
   const currentChoice = state.pendingChoices[state.currentChoiceIndex];
-  const isCpuTurn = isCpuMode && currentChoice?.player === 2;
-  const showingChoice = (state.phase === 'resolving_choice_p1' || state.phase === 'resolving_choice_p2') && currentChoice && !isCpuTurn && !specialAnnouncement;
 
-  // Auto-resolve CPU choices after a short delay
-  useEffect(() => {
-    if (!isCpuTurn) return;
-    if (state.phase !== 'resolving_choice_p2') return;
-
-    const timer = setTimeout(() => {
-      const cpuChoice = cpuController.resolveChoice(currentChoice, state);
-      if (cpuChoice) {
-        handleChoice(2, cpuChoice);
-      }
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [state.phase, state.currentChoiceIndex, isCpuTurn, currentChoice, state, handleChoice]);
+  // Determine if the current choice belongs to the current player
+  const isMyChoice = currentChoice && (
+    (isHost && currentChoice.player === 1) ||
+    (!isHost && currentChoice.player === 2)
+  );
+  const showingChoice = (state.phase === 'resolving_choice_p1' || state.phase === 'resolving_choice_p2') && currentChoice && isMyChoice && !specialAnnouncement;
 
   // ---------------------------------------------------------------------------
   // Rendering helpers
   // ---------------------------------------------------------------------------
-  const handleGoToTitle = useCallback(() => {
-    restartMatch();
-    setScreen('title');
-  }, [restartMatch]);
-
   const getPlayerName = (id: number) => id === 1 ? state.player1.name : state.player2.name;
 
-  // Compute per-die highlights (colors only, animation handled by DOM/CSS)
   const p1Highlights: DieHighlight[] | undefined = showEffects
     ? computeDiceHighlights(state.player1.currentRoll)
     : undefined;
@@ -400,102 +317,29 @@ function App() {
     ? computeDiceHighlights(state.player2.currentRoll)
     : undefined;
 
-  // Track which players are CPU in 3-player mode
-  const [cpuPlayers, setCpuPlayers] = useState<PlayerId[]>([]);
-
-  const handleStart = useCallback((mode: GameMode, name1: string, name2?: string, name3?: string) => {
-    setP1Name(name1);
-    if (mode === 'local3') {
-      setP2Name(name2 || '船長2');
-      setP3Name(name3 || '船長3');
-      setCpuPlayers([]);
-      setScreen('game3');
-      return;
-    }
-    if (mode === 'cpu3') {
-      setP2Name(name2 || '船長2');
-      setP3Name(randomPirateName());
-      setCpuPlayers([3]);
-      setScreen('game3');
-      return;
-    }
-    if (mode === 'cpu3x2') {
-      setP2Name(randomPirateName());
-      setP3Name(randomPirateName());
-      setCpuPlayers([2, 3]);
-      setScreen('game3');
-      return;
-    }
-    const opponent = name2 ?? randomPirateName();
-    setP2Name(opponent);
-    restartMatch(mode, name1, opponent);
-    setScreen('game');
-  }, [restartMatch]);
-
-  const handleOnlineStart = useCallback(() => {
-    setScreen('online_lobby');
-  }, []);
-
-  const handleOnlineGameStart = useCallback((roomCode: string, role: 'host' | 'guest', myName: string, opponentName: string) => {
-    setOnlineRoomCode(roomCode);
-    setOnlineRole(role);
-    setOnlineMyName(myName);
-    setOnlineOpponentName(opponentName);
-    setScreen('online_game');
-  }, []);
-
-  if (screen === 'title') {
-    return <TitleScreen onStart={handleStart} onShowRules={() => setScreen('rule')} onOnline={handleOnlineStart} />;
-  }
-
-  if (screen === 'rule') {
-    return <RuleScreen onBack={() => setScreen('title')} />;
-  }
-
-  if (screen === 'online_lobby') {
-    return (
-      <OnlineLobby
-        onGameStart={handleOnlineGameStart}
-        onBack={() => setScreen('title')}
-      />
-    );
-  }
-
-  if (screen === 'online_game') {
-    return (
-      <OnlineGame
-        roomCode={onlineRoomCode}
-        role={onlineRole}
-        myName={onlineMyName}
-        opponentName={onlineOpponentName}
-        onGoToTitle={() => setScreen('title')}
-      />
-    );
-  }
-
-  if (screen === 'game3') {
-    return (
-      <ThreePlayerGame
-        names={[p1Name, p2Name, p3Name]}
-        onGoToTitle={() => setScreen('title')}
-        cpuPlayers={cpuPlayers}
-      />
-    );
-  }
-
   const isInstantWin = state.instantWinCondition !== null &&
     (state.phase === 'round_end' || state.phase === 'match_end');
 
-  // Roll button visibility:
-  // P1 can roll when phase is 'waiting' and hasn't rolled yet
-  // P2 can roll when phase is 'waiting' and hasn't rolled yet (and not CPU)
-  const p1CanRoll = state.phase === 'waiting' && !state.p1Rolled;
-  const p2CanRoll = state.phase === 'waiting' && !state.p2Rolled && !isCpuMode;
+  // My and opponent's roll state
+  const myRolled = isHost ? state.p1Rolled : state.p2Rolled;
+  const oppRolled = isHost ? state.p2Rolled : state.p1Rolled;
 
-  // Dice unrevealed: show "?" when opponent hasn't rolled yet
-  // In non-waiting phases (showing_results, resolving_*), both are revealed
+  // Dice unrevealed
   const p1Unrevealed = state.phase === 'waiting' && !state.p1Rolled;
   const p2Unrevealed = state.phase === 'waiting' && !state.p2Rolled;
+  const myUnrevealed = isHost ? p1Unrevealed : p2Unrevealed;
+  const oppUnrevealed = isHost ? p2Unrevealed : p1Unrevealed;
+
+  // Can I roll?
+  const canRoll = state.phase === 'waiting' && !myRolled;
+
+  // Resolve which rolling/highlight/incoming arrays correspond to my area vs opponent area
+  const myRollingDice = isHost ? p1RollingDice : p2RollingDice;
+  const oppRollingDice = isHost ? p2RollingDice : p1RollingDice;
+  const myHighlights = isHost ? p1Highlights : p2Highlights;
+  const oppHighlights = isHost ? p2Highlights : p1Highlights;
+  const myIncoming = isHost ? p1Incoming : p2Incoming;
+  const oppIncoming = isHost ? p2Incoming : p1Incoming;
 
   return (
     <div ref={containerRef} className="h-[100dvh] bg-navy-900 text-cream flex flex-col overflow-hidden relative">
@@ -507,38 +351,71 @@ function App() {
         <div className="absolute bottom-20 right-5 text-4xl opacity-10 animate-float" style={{ animationDelay: '0.5s' }}>⚓</div>
       </div>
 
-      {/* Go to title button */}
-      <button
-        onClick={() => setShowQuitConfirm(true)}
-        className="
-          absolute top-2 left-2 z-30
-          w-8 h-8 rounded-lg flex items-center justify-center
-          bg-navy-800/60 text-teal-400/50 border border-teal-600/20
-          hover:bg-navy-700 hover:text-teal-400 hover:border-teal-600/40
-          transition-all duration-150 text-sm
-        "
-        title="タイトルに戻る"
-      >
-        ⚓
-      </button>
+      {/* Top bar: quit button + connection indicator + room code */}
+      <div className="absolute top-2 left-2 right-2 z-30 flex items-center justify-between">
+        <button
+          onClick={() => setShowQuitConfirm(true)}
+          className="
+            w-8 h-8 rounded-lg flex items-center justify-center
+            bg-navy-800/60 text-teal-400/50 border border-teal-600/20
+            hover:bg-navy-700 hover:text-teal-400 hover:border-teal-600/40
+            transition-all duration-150 text-sm
+          "
+          title="タイトルに戻る"
+        >
+          ⚓
+        </button>
 
-      {/* Player 2 area (top) */}
-      <div className="flex-1 flex flex-col justify-end border-b border-teal-600/20">
+        <div className="flex items-center gap-2">
+          {/* Room code */}
+          <span className="text-xs font-pirate text-teal-400/50 bg-navy-800/40 px-2 py-0.5 rounded">
+            Room: {roomCode}
+          </span>
+          {/* Connection indicator */}
+          <span
+            className={`text-sm ${connected ? '' : ''}`}
+            title={connected ? '接続中' : '切断'}
+          >
+            {connected ? '🟢' : '🔴'}
+          </span>
+        </div>
+      </div>
+
+      {/* Opponent disconnect overlay */}
+      {opponentDisconnected && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80">
+          <div className="bg-navy-800 border border-red-500/50 rounded-2xl px-6 py-5 max-w-xs w-full mx-4 text-center shadow-[0_0_30px_rgba(239,68,68,0.3)]">
+            <p className="font-pirate text-xl text-red-400 mb-2">相手が切断しました</p>
+            <p className="text-teal-400/70 text-sm mb-5">対戦相手との接続が切れました</p>
+            <button
+              onClick={onGoToTitle}
+              className="
+                px-5 py-2 rounded-xl font-pirate text-base
+                bg-ghost-orange text-navy-900
+                hover:bg-orange-400 transition-all duration-150
+              "
+            >
+              タイトルに戻る
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Opponent area (top) */}
+      <div className="flex-1 flex flex-col justify-end border-b border-teal-600/20 pt-8">
         <PlayerArea
-          player={state.player2}
+          player={oppPlayer}
           removedPool={state.removedPool}
-          rollingMask={p2RollingDice.length > 0 ? p2RollingDice : undefined}
-          highlights={p2Highlights}
+          rollingMask={oppRollingDice.length > 0 ? oppRollingDice : undefined}
+          highlights={oppHighlights}
           removedChanged={removedChanged}
-          inverted={!isCpuMode}
-          isCpu={isCpuMode}
-          diceIdPrefix="p2-dice"
-          incomingCount={p2Incoming}
-          incomingAnimClass={p2Incoming > 0 ? 'animate-die-incoming-from-bottom' : undefined}
-          unrevealed={p2Unrevealed}
-          canRoll={p2CanRoll}
-          hasRolled={state.p2Rolled}
-          onRoll={() => handlePlayerRoll(2)}
+          inverted
+          diceIdPrefix={oppPrefix}
+          incomingCount={oppIncoming}
+          incomingAnimClass={oppIncoming > 0 ? 'animate-die-incoming-from-bottom' : undefined}
+          unrevealed={oppUnrevealed}
+          canRoll={false}
+          hasRolled={oppRolled}
         />
       </div>
 
@@ -565,11 +442,11 @@ function App() {
           player2Roll={state.p2Rolled ? state.player2.currentRoll : []}
         />
 
-        {/* Center action area — priority dice / CPU choosing only */}
+        {/* Center action area — waiting or priority */}
         <div className="flex justify-center h-[32px] sm:h-[36px] items-center">
-          {isCpuTurn ? (
+          {!isMyChoice && currentChoice && (state.phase === 'resolving_choice_p1' || state.phase === 'resolving_choice_p2') && !specialAnnouncement ? (
             <div className="px-4 py-1 rounded-lg font-pirate text-base sm:text-lg text-ghost-orange animate-pulse">
-              CPUが選択中...
+              相手が選択中...
             </div>
           ) : state.phase === 'resolving_priority' && !specialAnnouncement ? (
             <button
@@ -586,21 +463,21 @@ function App() {
         </div>
       </div>
 
-      {/* Player 1 area (bottom) */}
+      {/* My area (bottom) */}
       <div className="flex-1 flex flex-col justify-start border-t border-teal-600/20">
         <PlayerArea
-          player={state.player1}
+          player={myPlayer}
           removedPool={state.removedPool}
-          rollingMask={p1RollingDice.length > 0 ? p1RollingDice : undefined}
-          highlights={p1Highlights}
+          rollingMask={myRollingDice.length > 0 ? myRollingDice : undefined}
+          highlights={myHighlights}
           removedChanged={removedChanged}
-          diceIdPrefix="p1-dice"
-          incomingCount={p1Incoming}
-          incomingAnimClass={p1Incoming > 0 ? 'animate-die-incoming-from-top' : undefined}
-          unrevealed={p1Unrevealed}
-          canRoll={p1CanRoll}
-          hasRolled={state.p1Rolled}
-          onRoll={() => handlePlayerRoll(1)}
+          diceIdPrefix={myPrefix}
+          incomingCount={myIncoming}
+          incomingAnimClass={myIncoming > 0 ? 'animate-die-incoming-from-top' : undefined}
+          unrevealed={myUnrevealed}
+          canRoll={canRoll}
+          hasRolled={myRolled}
+          onRoll={handleMyRoll}
         />
       </div>
 
@@ -617,10 +494,10 @@ function App() {
         </div>
       )}
 
-      {/* Special choice effect overlay (curse, swap only) */}
+      {/* Special choice effect overlay */}
       <DiceEffects effects={diceEffects} />
 
-      {/* Choice dialog */}
+      {/* Choice dialog — only shown for the current player */}
       {showingChoice && (
         <ChoiceDialog
           choice={currentChoice}
@@ -649,7 +526,7 @@ function App() {
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70">
           <div className="bg-navy-800 border border-teal-600/30 rounded-2xl px-6 py-5 max-w-xs w-full mx-4 text-center shadow-[0_0_30px_rgba(0,0,0,0.5)]">
             <p className="font-pirate text-xl text-ghost-orange mb-2">タイトルに戻りますか？</p>
-            <p className="text-teal-400/70 text-sm mb-5">現在のゲームの進行状況は失われます</p>
+            <p className="text-teal-400/70 text-sm mb-5">対戦相手との接続が切れます</p>
             <div className="flex gap-3 justify-center">
               <button
                 onClick={() => setShowQuitConfirm(false)}
@@ -664,7 +541,7 @@ function App() {
               <button
                 onClick={() => {
                   setShowQuitConfirm(false);
-                  handleGoToTitle();
+                  onGoToTitle();
                 }}
                 className="
                   px-5 py-2 rounded-xl font-pirate text-base
@@ -686,11 +563,8 @@ function App() {
           winner={state.matchWinner}
           isDraw={false}
           winnerName={state.matchWinner ? getPlayerName(state.matchWinner) : ''}
-          onNext={() => {
-            const isCpu = state.mode === 'cpu';
-            restartMatch(state.mode, p1Name, isCpu ? randomPirateName() : p2Name);
-          }}
-          onGoToTitle={handleGoToTitle}
+          onNext={restartMatch}
+          onGoToTitle={onGoToTitle}
           isInstantWin={isInstantWin}
           instantWinCondition={state.instantWinCondition}
           instantWinDice={state.instantWinDice}
@@ -700,5 +574,3 @@ function App() {
     </div>
   );
 }
-
-export default App;

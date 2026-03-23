@@ -4,6 +4,7 @@ import type { GameMode } from '../types/game';
 interface TitleScreenProps {
   onStart: (mode: GameMode, p1Name: string, p2Name?: string, p3Name?: string) => void;
   onShowRules: () => void;
+  onOnline?: () => void;
 }
 
 const INPUT_CLASS = `
@@ -59,7 +60,7 @@ const BACK_BTN = `
 
 type Step = 'count' | 'mode' | 'names';
 
-export default function TitleScreen({ onStart, onShowRules }: TitleScreenProps) {
+export default function TitleScreen({ onStart, onShowRules, onOnline }: TitleScreenProps) {
   const [p1Name, setP1Name] = useState('');
   const [p2Name, setP2Name] = useState('');
   const [p3Name, setP3Name] = useState('');
@@ -170,11 +171,25 @@ export default function TitleScreen({ onStart, onShowRules }: TitleScreenProps) 
                     bg-navy-700 text-teal-400 border border-teal-600/50
                     hover:bg-teal-600/20 hover:border-teal-400
                     active:scale-95 transition-all duration-200
-                    mb-4 w-full max-w-xs
+                    mb-3 w-full max-w-xs
                   "
                 >
                   人間 vs 人間
                 </button>
+                {onOnline && (
+                  <button
+                    onClick={onOnline}
+                    className="
+                      px-8 py-3 rounded-xl font-pirate text-xl
+                      bg-navy-700 text-yellow-400 border border-yellow-500/50
+                      hover:bg-yellow-600/20 hover:border-yellow-400
+                      active:scale-95 transition-all duration-200
+                      mb-4 w-full max-w-xs
+                    "
+                  >
+                    ネット対戦
+                  </button>
+                )}
               </>
             ) : (
               <>
